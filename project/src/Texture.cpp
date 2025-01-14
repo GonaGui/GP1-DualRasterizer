@@ -2,6 +2,9 @@
 #include <iostream>
 #include <SDL_image.h>
 
+#include "ColorRGB.h"
+#include "Vector2.h"
+
 Texture::~Texture()
 {
  	m_pResource->Release();
@@ -12,13 +15,17 @@ Texture::Texture()
 {
 }
 
-void Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
+Texture* Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 {
+	SDL_Surface* surface = IMG_Load(path.c_str());
+
+	Texture* texture = new Texture{ surface };
+
 	SDL_Surface* pSurface = IMG_Load(path.c_str());
 	if (!pSurface)
 	{
 		std::cout << "Failed to load image: " << path << " SDL_Error: " << SDL_GetError() << std::endl;
-		return;
+		return nullptr;
 	}
 
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -45,7 +52,7 @@ void Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 	if (FAILED(hr))
 	{
 		std::cout << "failed to Create Texture2D" << std::endl;
-		return;
+		return nullptr;
 	}
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
@@ -57,11 +64,40 @@ void Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 	if (FAILED(hr))
 	{
 		std::cout << "failed to Create Shader Resource View" << std::endl;
-		return;
+		return nullptr;
 	}
+
+
+	return texture;
 }
 
 ID3D11ShaderResourceView* Texture::GetSRV()
 {
 	return m_pSRV;
+}
+
+dae::ColorRGB Texture::Sample(const dae::Vector2& uv) const
+{
+	float x = uv.x - std::floor(uv.x);
+	float y = uv.y - std::floor(uv.y);
+	x = uint32_t(x * m_pSurface->w);
+	y = uint32_t(y * m_pSurface->h);
+
+
+	uint8_t r, g, b;
+	Uint8* pPixelAddress = (Uint8*)m_pSurfacePixels + uint32_t(y) * m_pSurface->pitch + uint32_t(x) * m_pSurface->format->BytesPerPixel;
+
+	SDL_GetRGB(*(Uint32*)pPixelAddress, m_pSurface->format, &r, &g, &b);
+
+	return {
+		r / 255.f ,
+		g / 255.f,
+		b / 255.f
+	};
+}
+
+Texture::Texture(SDL_Surface* pSurface) :
+	m_pSurface{ pSurface },
+	m_pSurfacePixels{ static_cast<uint32_t*>(pSurface->pixels) }
+{
 }

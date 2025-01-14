@@ -31,7 +31,7 @@ namespace dae
 		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, std::array<Vector4, 3>& Triangle) const;
 		bool IsInFrustum(std::array<Vector4, 3>& Triangle) const;
 		void InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights);
-		ColorRGB PixelShading(const VertexOut& v);
+		ColorRGB PixelShading(const VertexOut& v, Mesh& currentMesh);
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<VertexOut>& vertices_out, Mesh& CurrentMesh) const;
 		void ConvertToRasterSpace(std::array<Vector4, 3>& Vertices) ;

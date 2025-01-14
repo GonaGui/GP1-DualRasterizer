@@ -424,9 +424,9 @@ namespace dae {
 			(CurrentMesh.GetOutVertices()[indice1].Tangent / Triangle[1].w) * Weights[1] +
 			(CurrentMesh.GetOutVertices()[indice2].Tangent / Triangle[2].w) * Weights[2]) * WInterpolated;
 
-		InterpolatedValues.ViewDirection = ((CurrentMesh.GetOutVertices()[indice0].viewDirection / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].viewDirection / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].viewDirection / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.WorldPosition = ((CurrentMesh.GetOutVertices()[indice0].WorldPosition / Triangle[0].w) * Weights[0] +
+			(CurrentMesh.GetOutVertices()[indice1].WorldPosition / Triangle[1].w) * Weights[1] +
+			(CurrentMesh.GetOutVertices()[indice2].WorldPosition / Triangle[2].w) * Weights[2]) * WInterpolated;
 
 		InterpolatedValues.Position = ((CurrentMesh.GetOutVertices()[indice0].Position / Triangle[0].w) * Weights[0] +
 			(CurrentMesh.GetOutVertices()[indice1].Position / Triangle[1].w) * Weights[1] +
@@ -435,20 +435,20 @@ namespace dae {
 
 	}
 
-	ColorRGB Renderer::PixelShading(const VertexOut& v)
+	ColorRGB Renderer::PixelShading(const VertexOut& v, Mesh& currentMesh)
 	{
 		ColorRGB ambient{ .03f,.03f,.03f };
 		Vector3 lightDirection = { .577f,-.577f,.577f };
 
 		float kd = 7.f;
-		ColorRGB cd = m_Texture->Sample(v.Uv); 
+		ColorRGB cd = currentMesh.GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
 
 		// Grabs the Normal colors of the Normal map and then converts it to a usable format
 		Vector3 NormalMap;
 
 		if (m_IsNormalMapOn)
 		{
-			ColorRGB normalMapColor = m_NormalMap->Sample(v.Uv);
+			ColorRGB normalMapColor = currentMesh.GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
 			Vector3 binormal = Vector3::Cross(v.Normal, v.Tangent);
 			Matrix tangentSpaceAxis = Matrix{ v.Tangent, binormal, v.Normal, Vector3{} };
 			NormalMap = { normalMapColor.r,normalMapColor.g,normalMapColor.b };
@@ -466,11 +466,12 @@ namespace dae {
 		float observedArea = Vector3::Dot(NormalMap, -lightDirection);
 
 		float shininess = 25.f;
-		ColorRGB glossMapColor = m_GlossinessMap->Sample(v.Uv);
-		ColorRGB specularMapColor = m_SpecularMap->Sample(v.Uv);
+		ColorRGB glossMapColor = currentMesh.GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
+		ColorRGB specularMapColor = currentMesh.GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
 		specularMapColor *= shininess;
 		Vector3 reflect = -lightDirection - 2 * NormalMap * observedArea;
-		float cosa{ std::max(Vector3::Dot(reflect, v.ViewDirection), 0.f) };
+		Vector4 viewDirection = v.WorldPosition -m_Camera.origin.ToPoint4().Normalized();
+		float cosa{ std::max(Vector3::Dot(reflect, viewDirection), 0.f) };
 		ColorRGB PhongSpecReflec = ColorRGB{ 1,1,1 } *glossMapColor.r * (std::pow(cosa, specularMapColor.r));
 
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <initializer_list>
+#include <string>
 #include <vector>
 #include "d3dx11effect.h"
 
@@ -16,7 +17,6 @@ struct MatCompFormat
 		pMatCompDirectXVarName{matCompDirectXVarName}, pMatCompPath{matCompPath}, pMatCompTexture(nullptr),
 		pMatCompEqDirectXResource(nullptr)
 	{
-		
 	}
 
 	MatCompFormat() :
@@ -30,9 +30,11 @@ struct MatCompFormat
 class Material
 {
 public:
-	Material(std::initializer_list<MatCompFormat>& materialInfo, ID3D11Device* directXDevice);
+	Material(const std::initializer_list<MatCompFormat>& materialInfo, ID3D11Device* directXDevice);
 	~Material();
-	std::vector<MatCompFormat>& GetMaterialComponents();
+	MatCompFormat GetMaterialComponentByName(const std::string& directXVarName) const;
+	std::vector<MatCompFormat> GetMaterialComponents();
+
 	
 
 private:

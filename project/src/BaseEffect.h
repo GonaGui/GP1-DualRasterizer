@@ -24,7 +24,7 @@ public:
 	virtual void UpdateData(const float* worldProjViewMatrix, const float* worldMatrix, const float* cameraPos) const;
 	void ToggleTechnique();
 	virtual void SetMaterial(std::initializer_list<MatCompFormat>& materialComponent, ID3D11Device* directXDevice);
-	std::vector<MatCompFormat>& GetMaterialComponents() const;
+	MatCompFormat GetMaterialComponentByName(std::string directXVarName) const;
 protected:
 
 	ID3DX11Effect* m_pEffect{ nullptr };

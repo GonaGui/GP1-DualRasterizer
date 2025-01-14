@@ -16,6 +16,15 @@ BaseEffect::BaseEffect(ID3D11Device* pDevice, const std::wstring& assetFile)
 	if (!m_pMatWorldViewProjVariable->IsValid())
 		std::wcout << L"m_pMatWorldViewProjVariable not valid \n";
 
+	m_pWorldMatrixVariable = m_pEffect->GetVariableByName("gWorldMatrix")->AsMatrix();
+	if (!m_pWorldMatrixVariable->IsValid())
+		std::wcout << L"m_pWorldMatrixVariable not valid \n";
+
+	m_pCameraPosition = m_pEffect->GetVariableByName("gCameraPosition")->AsVector();
+
+	if (!m_pCameraPosition->IsValid())
+		std::wcout << L"m_pCameraPosition not valid \n";
+
 }
 
 BaseEffect::~BaseEffect()
@@ -164,7 +173,7 @@ void BaseEffect::SetMaterial(std::initializer_list<MatCompFormat>& materialCompo
 
 }
 
-std::vector<MatCompFormat>& BaseEffect::GetMaterialComponents() const
+MatCompFormat BaseEffect::GetMaterialComponentByName(std::string directXVarName) const
 {
-	return m_Material->GetMaterialComponents();
+	return m_Material->GetMaterialComponentByName(directXVarName);
 }

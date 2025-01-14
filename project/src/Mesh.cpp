@@ -8,10 +8,11 @@
 #include "SDL_system.h"
 
 #include "d3dx11effect.h"
+#include "Material.h"
 
 
 Mesh::Mesh(ID3D11Device* pDevice, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, 
-	BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents)
+           BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents)
 {
 	m_Vertices = vertices;
 	m_Indices = indices;
@@ -195,9 +196,9 @@ dae::Matrix Mesh::GetWorldMatrix()
 	return m_WorldMatrix;
 }
 
-std::vector<MatCompFormat>& Mesh::GetMaterialComponents() const
+MatCompFormat Mesh::GetMaterialComponentByName(std::string directXVarName) const
 {
-	return m_pEffect->GetMaterialComponents();
+	return m_pEffect->GetMaterialComponentByName(directXVarName);
 }
 
 std::vector<VertexOut> Mesh::GetOutVertices()

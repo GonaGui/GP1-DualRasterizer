@@ -55,7 +55,7 @@ public:
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopologyType);
 	void UpdateWorldMatrixRotY(float yaw, float deltaSeconds);
 	dae::Matrix GetWorldMatrix();
-	std::vector<MatCompFormat>& GetMaterialComponents() const;
+	MatCompFormat GetMaterialComponentByName(std::string directXVarName) const;
 	std::vector<VertexOut> GetOutVertices();
 	std::vector<uint32_t> GetIndices();
 

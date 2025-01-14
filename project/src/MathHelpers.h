@@ -1,4 +1,5 @@
 #pragma once
+#include <cfloat>
 #include <cmath>
 
 namespace dae

@@ -6,18 +6,6 @@
 
 Effects::Effects(ID3D11Device* pDevice, const std::wstring& assetFile): BaseEffect(pDevice, assetFile)
 {
-	m_pWorldMatrixVariable = m_pEffect->GetVariableByName("gWorldMatrix")->AsMatrix();
-
-	m_pCameraPosition = m_pEffect->GetVariableByName("gCameraPosition")->AsVector();
-
-	if (!m_pWorldMatrixVariable->IsValid())
-		std::wcout << L"m_pWorldMatrixVariable not valid \n";
-
-	if (!m_pCameraPosition->IsValid())
-		std::wcout << L"m_pCameraPosition not valid \n";
-
-
-
 	m_Techniques.push_back("LinearTechnique");
 	m_Techniques.push_back("PointTechnique");
 	m_Techniques.push_back("AnisotropicTechnique");
