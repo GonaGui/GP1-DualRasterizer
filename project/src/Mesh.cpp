@@ -12,12 +12,14 @@
 
 
 Mesh::Mesh(ID3D11Device* pDevice, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, 
-           BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents)
+           BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents, bool usesTransparency)
 {
 	m_Vertices = vertices;
 	m_Indices = indices;
 
 	m_pEffect = effect;
+
+	m_UsesTransparency = usesTransparency;
 
 	//Create Vertex Layout
 	static constexpr uint32_t numElements{ 6 };
@@ -142,6 +144,7 @@ Mesh::Mesh(ID3D11Device* pDevice, const std::vector<Vertex>& vertices, const std
 	m_pEffect->SetMaterial(materialComponents, pDevice);
 	
 }
+
 
 Mesh::~Mesh()
 {
@@ -285,4 +288,9 @@ void Mesh::ToggleCullMode()
 CullModes Mesh::GetCurrentCullMode() const
 {
 	return m_CurrentCullMode;
+}
+
+bool Mesh::GetUsesTransparency() const
+{
+	return m_UsesTransparency;
 }

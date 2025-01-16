@@ -2,7 +2,7 @@
 #include <d3d11.h>
 #include <string>
 
-#include "ColorRGB.h"
+#include "ColorRGBA.h"
 #include "SDL_surface.h"
 
 
@@ -18,7 +18,7 @@ public:
 	Texture();
 	void LoadFromFile(ID3D11Device* pDevice, const std::string& path);
 	ID3D11ShaderResourceView* GetSRV();
-	dae::ColorRGB Sample(const dae::Vector2& uv) const;
+	dae::ColorRGBA Sample(const dae::Vector2& uv) const;
 private:
 	Texture(SDL_Surface* pSurface);
 

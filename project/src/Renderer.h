@@ -5,6 +5,7 @@
 #include "Effects.h"
 #include "Mesh.h"
 
+
 struct SDL_Window;
 struct SDL_Surface;
 
@@ -29,7 +30,7 @@ namespace dae
 		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, const std::array<Vector4, 3>& triangle) const;
 		static bool IsInFrustum(std::array<Vector4, 3>& triangle);
 		static void InterpolateValues(VertexOut& interpolatedValues, const std::array<Vector4, 3>& triangle, Mesh& currentMesh, float wInterpolated, int idx, std::array<float, 3> weights);
-		ColorRGB PixelShading(const VertexOut& v, const Mesh* currentMesh) const;
+		ColorRGBA PixelShading(const VertexOut& v, const Mesh* currentMesh) const;
 
 		void VertexTransformationFunction(const std::vector<Vertex>& verticesIn, std::vector<VertexOut>& verticesOut, Mesh& currentMesh) const;
 		void ConvertToRasterSpace(std::array<Vector4, 3>& vertices) const;

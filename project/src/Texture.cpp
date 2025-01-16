@@ -2,7 +2,6 @@
 #include <iostream>
 #include <SDL_image.h>
 
-#include "ColorRGB.h"
 #include "Vector2.h"
 
 Texture::~Texture()
@@ -80,7 +79,7 @@ ID3D11ShaderResourceView* Texture::GetSRV()
 	return m_pSRV;
 }
 
-dae::ColorRGB Texture::Sample(const dae::Vector2& uv) const
+dae::ColorRGBA Texture::Sample(const dae::Vector2& uv) const
 {
 	float x = uv.x - std::floor(uv.x);
 	float y = uv.y - std::floor(uv.y);
@@ -88,15 +87,16 @@ dae::ColorRGB Texture::Sample(const dae::Vector2& uv) const
 	y = uint32_t(y * m_pSurface->h);
 
 
-	uint8_t r, g, b;
+	uint8_t r, g, b, a;
 	Uint8* pPixelAddress = (Uint8*)m_pSurfacePixels + uint32_t(y) * m_pSurface->pitch + uint32_t(x) * m_pSurface->format->BytesPerPixel;
 
-	SDL_GetRGB(*(Uint32*)pPixelAddress, m_pSurface->format, &r, &g, &b);
+	SDL_GetRGBA(*(Uint32*)pPixelAddress, m_pSurface->format, &r, &g, &b,&a);
 
 	return {
 		r / 255.f ,
 		g / 255.f,
-		b / 255.f
+		b / 255.f,
+		a / 255.f
 	};
 }
 

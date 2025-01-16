@@ -8,11 +8,12 @@ set(SOURCES
 	"src/Vector2.cpp"
     "src/Vector3.cpp"
     "src/Vector4.cpp"
+    "src/ColorRGBA.h"
     
     "src/Effects.cpp"
     "src/Mesh.cpp"
     "src/Texture.cpp"
-    "src/AlphaEffect.cpp" "src/BaseEffect.cpp" "src/Material.cpp")
+    "src/AlphaEffect.cpp" "src/BaseEffect.cpp" "src/Material.cpp" )
 
 # Create the executable
 add_executable(${PROJECT_NAME} ${SOURCES})

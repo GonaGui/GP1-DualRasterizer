@@ -48,7 +48,7 @@ class Mesh
 public:
 
 	Mesh(ID3D11Device* pDevice, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, 
-		BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents);
+		BaseEffect* effect, std::initializer_list<MatCompFormat> materialComponents,bool usesTransparency = false);
 
 	~Mesh();
 
@@ -71,6 +71,7 @@ public:
 	std::vector<uint32_t>& GetIndices();
 	void ToggleCullMode();
 	CullModes GetCurrentCullMode() const;
+	bool GetUsesTransparency() const;
 
 private:
 	ID3D11InputLayout*		m_pInputLayout{ nullptr };
@@ -83,6 +84,8 @@ private:
 	BaseEffect*				m_pEffect { nullptr };
 	PrimitiveTopology       m_PrimitiveTopology{ TriangleList };
 	CullModes               m_CurrentCullMode{NoCull};
+
+	bool					m_UsesTransparency{false};
 
 	dae::Matrix				m_WorldMatrix{ };
 

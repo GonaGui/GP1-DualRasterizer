@@ -8,6 +8,7 @@
 #include "Utils.h"
 
 
+
 namespace dae {
 
 	Renderer::Renderer(SDL_Window* pWindow) :
@@ -61,7 +62,8 @@ namespace dae {
 	 
 	 	m_pMeshes.push_back(new Mesh
 	 		{ m_pDevice,vertices,indices,m_MeshEffects["FireEffect"],
-	 		{ MatCompFormat("gDiffuseMap", "Resources/fireFX_diffuse.png") } });
+	 		{ MatCompFormat("gDiffuseMap", "Resources/fireFX_diffuse.png") },
+	 			true });
 		
 		for (auto& mesh: m_pMeshes )
 		{
@@ -85,7 +87,7 @@ namespace dae {
 		if (m_pRenderTargetBuffer) m_pRenderTargetBuffer->Release();
 		if (m_pRenderTargetView) m_pRenderTargetView->Release();
 
-		for (auto mesh : m_pMeshes)
+		for (const auto mesh : m_pMeshes)
 		{
 			delete mesh;
 		}
@@ -96,7 +98,7 @@ namespace dae {
 		m_Camera.Update(pTimer); 
 		if (m_IsRotating)
 		{
-			for (auto mesh : m_pMeshes)
+			for (const auto mesh : m_pMeshes)
 			{
 				mesh->UpdateWorldMatrixRotY(PI / 2, pTimer->GetElapsed());
 			}
@@ -106,9 +108,11 @@ namespace dae {
 	}
 
 
+	
+
 	void Renderer::Render() const
 	{
-		ColorRGB BackgroundColor{ .1f, .1f, .1f };
+		ColorRGBA backgroundColor{ .1f, .1f, .1f };
 
 		if (m_IsSoftwareRasterizer)
 		{
@@ -116,13 +120,13 @@ namespace dae {
 			//Lock BackBuffer
 			if (m_UniformColor == false)
 			{
-				BackgroundColor = { 0.39,0.39 ,0.39 };
+				backgroundColor = { 0.39,0.39 ,0.39 };
 			}
 	
 			SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format,
-				static_cast<uint8_t>(BackgroundColor.r * 255),
-				static_cast<uint8_t>(BackgroundColor.g * 255),
-				static_cast<uint8_t>(BackgroundColor.b * 255)));
+				static_cast<uint8_t>(backgroundColor.r * 255),
+				static_cast<uint8_t>(backgroundColor.g * 255),
+				static_cast<uint8_t>(backgroundColor.b * 255)));
 			SDL_LockSurface(m_pBackBuffer);
 
 			for (int idx{}; idx < m_Width * m_Height; idx++)
@@ -133,6 +137,7 @@ namespace dae {
 			for (auto currentMesh: m_pMeshes)
 			{
 				if (currentMesh == m_pMeshes[1] && m_RenderFireMesh == false) continue;
+
 
 				auto& verticesOut = currentMesh->GetOutVertices();
 				auto&  indices = currentMesh->GetIndices();
@@ -192,23 +197,24 @@ namespace dae {
 					{
 						const int depthBufferIndex{ px + (py * m_Width) };
 
-						ColorRGB finalColor{ 0, 0, 0 };
+						ColorRGBA finalColor{ 0, 0, 0 };
 						Vector2 P{ px + 0.5f,py + 0.5f };
 
 						if (m_IsBoundingBoxVisualisation) 
 						{
-							finalColor = ColorRGB(1, 1, 1);
+							finalColor = ColorRGBA(1, 1, 1);
 
-							if (px == maxX - 1) finalColor = ColorRGB(1, 0, 0);
-							if (px == minX) finalColor = ColorRGB(1, 0, 0);
-							if (py == maxY - 1) finalColor = ColorRGB(1, 0, 0);
-							if (py == minY) finalColor = ColorRGB(1, 0, 0);
-							// Update Color in Buffer
-							finalColor.MaxToOne();
+							if (px == maxX - 1) finalColor = ColorRGBA(1, 0, 0);
+							if (px == minX) finalColor = ColorRGBA(1, 0, 0);
+							if (py == maxY - 1) finalColor = ColorRGBA(1, 0, 0);
+							if (py == minY) finalColor = ColorRGBA(1, 0, 0);
+
+
 							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
 								static_cast<uint8_t>(finalColor.r * 255),
 								static_cast<uint8_t>(finalColor.g * 255),
 								static_cast<uint8_t>(finalColor.b * 255));
+
 							continue;
 						}
 
@@ -244,24 +250,34 @@ namespace dae {
 							weights[1] / triangle[1].w +
 							weights[2] / triangle[2].w);
 
-						if (ZInterpolated >= m_pDepthBufferPixels[depthBufferIndex] || ZInterpolated <= -0 || ZInterpolated >= 1)
+						if (ZInterpolated >= m_pDepthBufferPixels[depthBufferIndex] || ZInterpolated <= 0 || ZInterpolated >= 1)
 							continue;
 						
 
-						m_pDepthBufferPixels[depthBufferIndex] = ZInterpolated;
 
-						VertexOut InterpolatedValues;
-						InterpolateValues(InterpolatedValues, triangle, *currentMesh, WInterpolated, idx, weights);
+						VertexOut interpolatedValues;
+						InterpolateValues(interpolatedValues, triangle, *currentMesh, WInterpolated, idx, weights);
 
-						InterpolatedValues.Position.z = ZInterpolated;
-						InterpolatedValues.Position.w = WInterpolated;
+						interpolatedValues.Position.z = ZInterpolated;
+						interpolatedValues.Position.w = WInterpolated;
+
+
+						if (!currentMesh->GetUsesTransparency()) m_pDepthBufferPixels[depthBufferIndex] = ZInterpolated;
 
 						if (m_IsRenderingDepthBuffer) 
 						{
 							Utils::Remap(ZInterpolated, 0.985f, 1);
-							finalColor = ColorRGB(ZInterpolated, ZInterpolated, ZInterpolated);
+							finalColor = ColorRGBA(ZInterpolated, ZInterpolated, ZInterpolated);
 						}
-						else finalColor = PixelShading(InterpolatedValues, currentMesh);
+						else 
+							finalColor = PixelShading(interpolatedValues, currentMesh);
+
+						uint8_t r, g, b;
+						SDL_GetRGB(m_pBackBufferPixels[px + (py * m_Width)], m_pBackBuffer->format, &r, &g, &b);
+
+						finalColor *= finalColor.a;
+
+						finalColor += ColorRGBA(r/255.f, g / 255.f, b / 255.f) * (1 - finalColor.a);
 
 						// Update Color in Buffer
 						finalColor.MaxToOne();
@@ -288,14 +304,14 @@ namespace dae {
 		{
 			if (m_UniformColor == false)
 			{
-				BackgroundColor = { .39f, .59f, .93f };
+				backgroundColor = { .39f, .59f, .93f };
 			}
 
 			if (!m_IsInitialized)
 				return;
 
 			// 1. CLEAR RTV & DSV
-			float color[4] = { BackgroundColor.r, BackgroundColor.g, BackgroundColor.b };
+			float color[4] = { backgroundColor.r, backgroundColor.g, backgroundColor.b };
 			m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
 			m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
 
@@ -305,11 +321,11 @@ namespace dae {
 				if (mesh == m_pMeshes[1] && m_RenderFireMesh == false) continue;
 
 		
-				Matrix WorldViewProjectionMatrix = mesh->GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
-				Matrix WorldMatrix = mesh->GetWorldMatrix();
+				Matrix worldViewProjectionMatrix = mesh->GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
+				Matrix worldMatrix = mesh->GetWorldMatrix();
 
 				// 2. SET PIPELINE + INVOKE DRAW CALLS (= RENDER)
-				mesh->Render(m_pDeviceContext, WorldMatrix, WorldViewProjectionMatrix, m_Camera.GetOrigin());
+				mesh->Render(m_pDeviceContext, worldMatrix, worldViewProjectionMatrix, m_Camera.GetOrigin());
 			
 				
 
@@ -468,13 +484,13 @@ namespace dae {
 	{
 		verticesOut.resize(verticesIn.size());
 
-		Matrix worldMatrix = currentMesh.GetWorldMatrix();
+		const Matrix worldMatrix = currentMesh.GetWorldMatrix();
 
-		Matrix WorldViewProjectionMatrix = currentMesh.GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
+		const Matrix worldViewProjectionMatrix = currentMesh.GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
 
 		for (int idx{}; idx < verticesIn.size(); idx++)
 		{
-			verticesOut[idx].Position = WorldViewProjectionMatrix.TransformPoint(verticesIn[idx].Position.ToPoint4());
+			verticesOut[idx].Position = worldViewProjectionMatrix.TransformPoint(verticesIn[idx].Position.ToPoint4());
 
 			verticesOut[idx].Position.x /= verticesOut[idx].Position.w;
 			verticesOut[idx].Position.y /= verticesOut[idx].Position.w;
@@ -489,20 +505,20 @@ namespace dae {
 
 	}
 
-	void Renderer::ConvertToRasterSpace(std::array<Vector4, 3>& Triangle) const
+	void Renderer::ConvertToRasterSpace(std::array<Vector4, 3>& triangle) const
 	{
 		for (int idx{ 0 }; idx < 3; idx++)
 		{
-			Triangle[idx].x = ((Triangle[idx].x + 1) / 2) * m_Width;
-			Triangle[idx].y = ((1 - Triangle[idx].y) / 2) * m_Height;
+			triangle[idx].x = ((triangle[idx].x + 1) / 2) * m_Width;
+			triangle[idx].y = ((1 - triangle[idx].y) / 2) * m_Height;
 		}
 	}
 
 
-	void Renderer::ToggleOptions(SDL_Scancode keyScancode)
+	void Renderer::ToggleOptions(const SDL_Scancode keyScancode)
 	{
 		if (keyScancode == SDL_SCANCODE_F1)
-			m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;;
+			m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;
 
 		if (keyScancode == SDL_SCANCODE_F2)
 			m_IsRotating = !m_IsRotating;
@@ -512,7 +528,7 @@ namespace dae {
 
 		if (keyScancode == SDL_SCANCODE_F4)
 		{
-			for (auto mesh : m_pMeshes)
+			for (const auto mesh : m_pMeshes)
 			{
 				mesh->ToggleTechnique();
 			}
@@ -555,7 +571,7 @@ namespace dae {
 		b = Vector3(triangle[1], triangle[2]);
 		c = Vector3(triangle[2], triangle[0]);
 
-		Vector3 n{ Vector3::Cross(a,b).Normalized() };
+		const Vector3 n{ Vector3::Cross(a,b).Normalized() };
 
 		//loops through the 3 vertices of the current triangle
 		for (int idx{}; idx < 3; idx++)
@@ -657,69 +673,71 @@ namespace dae {
 
 	}
 
-	ColorRGB Renderer::PixelShading(const VertexOut& v, const Mesh* currentMesh) const
+	ColorRGBA Renderer::PixelShading(const VertexOut& v, const Mesh* currentMesh) const
 	{
-		const ColorRGB ambient{ .025f,.025f,.025f };
+		constexpr ColorRGBA ambient{ .025f,.025f,.025f };
 		const Vector3 lightDirection = { .577f,-.577f,.577f };
 
-		const float kd = 7.f;
-		const ColorRGB cd = currentMesh->GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
+		constexpr float kd = 7.f;
+		const ColorRGBA cd = currentMesh->GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
 
 		// Grabs the Normal colors of the Normal map and then converts it to a usable format
-		Vector3 NormalMap { v.Normal};
+		Vector3 normalMap { v.Normal};
 
 		if (m_IsNormalMapOn)
 		{
 			if (currentMesh->HasMaterialByComponentName("gNormalMap"))
 			{
-				ColorRGB normalMapColor = currentMesh->GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
+				ColorRGBA normalMapColor = currentMesh->GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
 				const auto tangent = v.Tangent.Normalized();
 				const auto normal = v.Normal.Normalized();
 				const Vector3 binormal = Vector3::Cross(normal, tangent);
 				const Matrix tangentSpaceAxis = Matrix{ tangent, binormal, normal, Vector3{} };
-				NormalMap = { normalMapColor.r,normalMapColor.g,normalMapColor.b };
-				NormalMap = 2.f * NormalMap - Vector3{ 1.f,1.f,1.f };
-				NormalMap = tangentSpaceAxis.TransformVector(NormalMap);
+				normalMap = { normalMapColor.r,normalMapColor.g,normalMapColor.b };
+				normalMap = 2.f * normalMap - Vector3{ 1.f,1.f,1.f };
+				normalMap = tangentSpaceAxis.TransformVector(normalMap);
 			}
 
 		}
 
-		const float observedArea = Vector3::Dot(NormalMap, -lightDirection);
-		ColorRGB PhongSpecReflec{ };
+		const float observedArea = Vector3::Dot(normalMap, -lightDirection);
+		ColorRGBA phongSpecReflect{};
 
 
 		if (currentMesh->HasMaterialByComponentName("gSpecularMap") && 
 			currentMesh->HasMaterialByComponentName("gGlossinessMap"))
 		{
-			const ColorRGB specularMapColor = currentMesh->GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
-			const float shininess = 25.f;
+			const ColorRGBA specularMapColor = currentMesh->GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
+			constexpr float shininess = 25.f;
 
-			const ColorRGB glossMapColor = currentMesh->GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
+			const ColorRGBA glossMapColor = currentMesh->GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
 
 
-			const Vector3 reflect = Vector3::Reflect(-lightDirection, NormalMap);
+			const Vector3 reflect = Vector3::Reflect(-lightDirection, normalMap);
 			const Vector3 invViewDirection = (m_Camera.origin - v.WorldPosition.GetXYZ()).Normalized();
 			const float cosa{ std::max(Vector3::Dot(reflect, -invViewDirection), 0.f) };
 
-			PhongSpecReflec = ColorRGB{ 1,1,1 } *specularMapColor.r * (std::pow(cosa, glossMapColor.r * shininess));
+			phongSpecReflect = ColorRGBA{ 1,1,1 } *specularMapColor.r * (std::pow(cosa, glossMapColor.r * shininess));
 		}
+
+
+		if (currentMesh->GetUsesTransparency()) return cd; // if mesh has trasnparency just return pixel color
+
+		if (observedArea < 0) return ColorRGBA{ 0,0,0,1 };
 		
-
-
-		if (observedArea <= 0) return ColorRGB{ 0,0,0 };
 
 		switch (m_CurrentRenderMode)
 		{
-		case RenderModes::ObservedArea:
-			return ColorRGB{ observedArea,observedArea,observedArea };
-		case RenderModes::Combined:
-			return (((kd * cd) / PI) + PhongSpecReflec + ambient) * observedArea;
-		case RenderModes::Specular:
-			return PhongSpecReflec;
-		case RenderModes::Diffuse:
-			return ((kd * cd) / PI);
+		case ObservedArea:
+			return ColorRGBA{ observedArea,observedArea,observedArea };
+		case Combined:
+			return (((cd * kd) / PI) + phongSpecReflect + ambient) * observedArea;
+		case Specular:
+			return phongSpecReflect;
+		case Diffuse:
+			return ((cd * kd) / PI);
 		default:
-			return ColorRGB{ 0,0,0 };
+			return ColorRGBA{ 0,0,0 };
 		}
 	}
 
