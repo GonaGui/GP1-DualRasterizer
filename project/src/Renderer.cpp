@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Renderer.h"
 #include <array>
+#include <numeric>
+
 #include "AlphaEffect.h"
 #include "Material.h"
 #include "Utils.h"
@@ -91,12 +93,12 @@ namespace dae {
 
 	void Renderer::Update(Timer* pTimer)
 	{
-		m_Camera.Update(pTimer);
+		m_Camera.Update(pTimer); 
 		if (m_IsRotating)
 		{
 			for (auto mesh : m_pMeshes)
 			{
-				mesh->UpdateWorldMatrixRotY(PI / 2, pTimer->GetTotal());
+				mesh->UpdateWorldMatrixRotY(PI / 2, pTimer->GetElapsed());
 			}
 			
 		}
@@ -130,48 +132,45 @@ namespace dae {
 
 			for (auto currentMesh: m_pMeshes)
 			{
-				auto& VerticesOut = currentMesh->GetOutVertices();
-				auto  Indices = currentMesh->GetIndices();
+				if (currentMesh == m_pMeshes[1] && m_RenderFireMesh == false) continue;
+
+				auto& verticesOut = currentMesh->GetOutVertices();
+				auto&  indices = currentMesh->GetIndices();
 				VertexTransformationFunction(currentMesh->GetVertices(),
-					VerticesOut, *currentMesh);
+					verticesOut, *currentMesh);
 				Vector3 a{};
 				Vector3 b{};
 				Vector3 c{};
 
-				int NrOfTriangles;
+				int nrOfTriangles;
 
-				if (currentMesh->GetPrimitiveTopology() == PrimitiveTopology::TriangleList)
+				if (currentMesh->GetPrimitiveTopology() == TriangleList)
 				{
-					NrOfTriangles = Indices.size() / 3;
+					nrOfTriangles = indices.size() / 3;
 				}
 
 				else
 				{
-					NrOfTriangles = Indices.size() - 2;
+					nrOfTriangles = indices.size() - 2;
 				}
 
 				//RENDER LOGIC
 				//loops through all triangles
-				for (int idx{ 0 }; idx < NrOfTriangles; idx++)
+				for (int idx{ 0 }; idx < nrOfTriangles; idx++)
 				{
 					uint32_t indice0;
 					uint32_t indice1;
 					uint32_t indice2;
 
-					if (currentMesh->GetPrimitiveTopology() == PrimitiveTopology::TriangleStrip)
-					{
-						indice0 = Indices[idx];
-						indice1 = Indices[idx + 1];
-						indice2 = Indices[idx + 2];
+					indice0 = indices[idx * 3];
+					indice1 = indices[idx * 3 + 1];
+					indice2 = indices[idx * 3 + 2];
 
-						//never swapped the indices since it seems to work so far and swapping them instead adds a weird shadow
-					}
-
-					else
+					if (currentMesh->GetPrimitiveTopology() == TriangleStrip)
 					{
-						indice0 = Indices[idx * 3];
-						indice1 = Indices[idx * 3 + 1];
-						indice2 = Indices[idx * 3 + 2];
+						indice0 = indices[idx];
+						indice1 = indices[idx + 1];
+						indice2 = indices[idx + 2];
 					}
 
 					int minX;
@@ -179,86 +178,100 @@ namespace dae {
 					int maxX;
 					int maxY;
 
-					std::array<Vector4, 3> Triangle{ VerticesOut[indice0].Position,
-													 VerticesOut[indice1].Position,
-													 VerticesOut[indice2].Position };
+					std::array<Vector4, 3> triangle{ verticesOut[indice0].Position,
+													 verticesOut[indice1].Position,
+													 verticesOut[indice2].Position };
 
-					if (!IsInFrustum(Triangle)) continue;
+					if (!IsInFrustum(triangle)) continue;
 
-					ConvertToRasterSpace(Triangle);
-					CalculateBoundingBox(minX, minY, maxX, maxY, Triangle);
+					ConvertToRasterSpace(triangle);
+					CalculateBoundingBox(minX, minY, maxX, maxY, triangle);
 
-					for (int py{ minY }; py < maxY; ++py)
+					for (int py{ minY }, px; py < maxY; ++py) 
+					for (px = minX; px < maxX; ++px)
 					{
-						for (int px{ minX }; px < maxX; ++px)
+						const int depthBufferIndex{ px + (py * m_Width) };
+
+						ColorRGB finalColor{ 0, 0, 0 };
+						Vector2 P{ px + 0.5f,py + 0.5f };
+
+						if (m_IsBoundingBoxVisualisation) 
 						{
-							const int DepthBufferIndex{ px + (py * m_Width) };
+							finalColor = ColorRGB(1, 1, 1);
 
-							ColorRGB finalColor{ 0, 0, 0 };
-							Vector2 P{ px + 0.5f,py + 0.5f };
-
-
-							//if point in triangle
-							if (TriangleHitTest(idx, P, a, b, c, Triangle) == true)
-							{
-								float TriangleArea(Vector2::Cross(a.GetXY(), b.GetXY()));
-
-								std::array<float, 3> Weights{ Vector2::Cross(Vector2(P, Triangle[1].GetXY()), b.GetXY()),
-													 Vector2::Cross(Vector2(P, Triangle[2].GetXY()), c.GetXY()),
-													 Vector2::Cross(Vector2(P, Triangle[0].GetXY()), a.GetXY()), };
-
-
-								Weights[0] /= TriangleArea;
-								Weights[1] /= TriangleArea;
-								Weights[2] /= TriangleArea;
-
-
-								float ZInterpolated = 1.f / (Weights[0] / Triangle[0].z +
-									Weights[1] / Triangle[1].z +
-									Weights[2] / Triangle[2].z);
-
-								float WInterpolated = 1.f / (Weights[0] / Triangle[0].w +
-									Weights[1] / Triangle[1].w +
-									Weights[2] / Triangle[2].w);
-
-								if (ZInterpolated < m_pDepthBufferPixels[DepthBufferIndex])
-								{
-									if (ZInterpolated > 0 && ZInterpolated < 1)
-									{
-										m_pDepthBufferPixels[DepthBufferIndex] = ZInterpolated;
-										VertexOut InterpolatedValues;
-
-										InterpolateValues(InterpolatedValues, Triangle, *currentMesh
-											, WInterpolated, idx, Weights);
-
-										InterpolatedValues.Position.z = ZInterpolated;
-										InterpolatedValues.Position.w = WInterpolated;
-
-										if (m_IsRenderingDepthBuffer)
-										{
-											Utils::Remap(ZInterpolated, 0.985f, 1);
-											finalColor = ColorRGB(ZInterpolated, ZInterpolated, ZInterpolated);
-										}
-
-										else finalColor = PixelShading(InterpolatedValues,currentMesh);
-
-										//Update Color in Buffer
-										finalColor.MaxToOne();
-
-										m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-											static_cast<uint8_t>(finalColor.r * 255),
-											static_cast<uint8_t>(finalColor.g * 255),
-											static_cast<uint8_t>(finalColor.b * 255));
-
-									}
-
-
-								}
-
-							}
-
+							if (px == maxX - 1) finalColor = ColorRGB(1, 0, 0);
+							if (px == minX) finalColor = ColorRGB(1, 0, 0);
+							if (py == maxY - 1) finalColor = ColorRGB(1, 0, 0);
+							if (py == minY) finalColor = ColorRGB(1, 0, 0);
+							// Update Color in Buffer
+							finalColor.MaxToOne();
+							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+								static_cast<uint8_t>(finalColor.r * 255),
+								static_cast<uint8_t>(finalColor.g * 255),
+								static_cast<uint8_t>(finalColor.b * 255));
+							continue;
 						}
+
+						// Check if point is in the triangle
+						if (!TriangleHitTest(idx, P, a, b, c, triangle)) continue;
+
+						float triangleArea = Vector2::Cross(a.GetXY(), b.GetXY());
+
+						std::array<float, 3> weights{
+							Vector2::Cross(Vector2(P, triangle[1].GetXY()), b.GetXY()),
+							Vector2::Cross(Vector2(P, triangle[2].GetXY()), c.GetXY()),
+							Vector2::Cross(Vector2(P, triangle[0].GetXY()), a.GetXY())
+						};
+
+						weights[0] /= triangleArea;
+						weights[1] /= triangleArea;
+						weights[2] /= triangleArea;
+
+						const auto& weightsAccumulated = weights[0] + weights[1] + weights[2];
+						if (abs(weightsAccumulated) > 1.01 || abs(weightsAccumulated) < 0) continue;
+
+						if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
+							continue;
+
+						if (triangleArea > 0 && currentMesh->GetCurrentCullMode() == FrontFaceCull)
+							continue;
+
+						float ZInterpolated = 1.f / (weights[0] / triangle[0].z +
+							weights[1] / triangle[1].z +
+							weights[2] / triangle[2].z);
+
+						float WInterpolated = 1.f / (weights[0] / triangle[0].w +
+							weights[1] / triangle[1].w +
+							weights[2] / triangle[2].w);
+
+						if (ZInterpolated >= m_pDepthBufferPixels[depthBufferIndex] || ZInterpolated <= -0 || ZInterpolated >= 1)
+							continue;
+						
+
+						m_pDepthBufferPixels[depthBufferIndex] = ZInterpolated;
+
+						VertexOut InterpolatedValues;
+						InterpolateValues(InterpolatedValues, triangle, *currentMesh, WInterpolated, idx, weights);
+
+						InterpolatedValues.Position.z = ZInterpolated;
+						InterpolatedValues.Position.w = WInterpolated;
+
+						if (m_IsRenderingDepthBuffer) 
+						{
+							Utils::Remap(ZInterpolated, 0.985f, 1);
+							finalColor = ColorRGB(ZInterpolated, ZInterpolated, ZInterpolated);
+						}
+						else finalColor = PixelShading(InterpolatedValues, currentMesh);
+
+						// Update Color in Buffer
+						finalColor.MaxToOne();
+						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+							static_cast<uint8_t>(finalColor.r * 255),
+							static_cast<uint8_t>(finalColor.g * 255),
+							static_cast<uint8_t>(finalColor.b * 255));
+
 					}
+					
 
 
 				}
@@ -289,11 +302,16 @@ namespace dae {
 			// 1.5. GetWorldProjectionViewMatrix
 			for (auto mesh : m_pMeshes)
 			{
+				if (mesh == m_pMeshes[1] && m_RenderFireMesh == false) continue;
+
+		
 				Matrix WorldViewProjectionMatrix = mesh->GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
 				Matrix WorldMatrix = mesh->GetWorldMatrix();
 
 				// 2. SET PIPELINE + INVOKE DRAW CALLS (= RENDER)
 				mesh->Render(m_pDeviceContext, WorldMatrix, WorldViewProjectionMatrix, m_Camera.GetOrigin());
+			
+				
 
 			}
 
@@ -305,23 +323,6 @@ namespace dae {
 
 	}
 
-	void Renderer::ToggleTechnique() const
-	{
-		for (auto mesh : m_pMeshes)
-		{
-			mesh->ToggleTechnique();
-		}
-	}
-
-	void Renderer::ToggleRotation()
-	{
-		m_IsRotating = !m_IsRotating;
-	}
-
-	void Renderer::ToggleUniformColor()
-	{
-		m_UniformColor = !m_UniformColor;
-	}
 
 	HRESULT Renderer::InitializeDirectX()
 	{
@@ -463,27 +464,27 @@ namespace dae {
 		return result;
 	}
 
-	void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<VertexOut>& vertices_out, Mesh& CurrentMesh) const
+	void Renderer::VertexTransformationFunction(const std::vector<Vertex>& verticesIn, std::vector<VertexOut>& verticesOut, Mesh& currentMesh) const
 	{
-		vertices_out.resize(vertices_in.size());
+		verticesOut.resize(verticesIn.size());
 
-		Matrix worldMatrix = CurrentMesh.GetWorldMatrix();
+		Matrix worldMatrix = currentMesh.GetWorldMatrix();
 
-		Matrix WorldViewProjectionMatrix = CurrentMesh.GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
+		Matrix WorldViewProjectionMatrix = currentMesh.GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
 
-		for (int idx{}; idx < vertices_in.size(); idx++)
+		for (int idx{}; idx < verticesIn.size(); idx++)
 		{
-			vertices_out[idx].Position = WorldViewProjectionMatrix.TransformPoint(vertices_in[idx].Position.ToPoint4());
+			verticesOut[idx].Position = WorldViewProjectionMatrix.TransformPoint(verticesIn[idx].Position.ToPoint4());
 
-			vertices_out[idx].Position.x /= vertices_out[idx].Position.w;
-			vertices_out[idx].Position.y /= vertices_out[idx].Position.w;
-			vertices_out[idx].Position.z /= vertices_out[idx].Position.w;
+			verticesOut[idx].Position.x /= verticesOut[idx].Position.w;
+			verticesOut[idx].Position.y /= verticesOut[idx].Position.w;
+			verticesOut[idx].Position.z /= verticesOut[idx].Position.w;
 
-			vertices_out[idx].UV = vertices_in[idx].UV;
-			vertices_out[idx].Color = vertices_in[idx].Color;
-			vertices_out[idx].Normal = worldMatrix.TransformVector(vertices_in[idx].Normal).Normalized();
-			vertices_out[idx].Tangent = worldMatrix.TransformVector(vertices_in[idx].Tangent).Normalized();
-			vertices_out[idx].WorldPosition = (worldMatrix.TransformPoint(vertices_in[idx].Position)).ToVector4();
+			verticesOut[idx].UV = verticesIn[idx].UV;
+			verticesOut[idx].Color = verticesIn[idx].Color;
+			verticesOut[idx].Normal = worldMatrix.TransformVector(verticesIn[idx].Normal).Normalized();
+			verticesOut[idx].Tangent = worldMatrix.TransformVector(verticesIn[idx].Tangent).Normalized();
+			verticesOut[idx].WorldPosition = (worldMatrix.TransformPoint(verticesIn[idx].Position)).ToVector4();
 		}
 
 	}
@@ -497,32 +498,62 @@ namespace dae {
 		}
 	}
 
-	void Renderer::ToggleNextRenderMode()
+
+	void Renderer::ToggleOptions(SDL_Scancode keyScancode)
 	{
-		m_CurrentRenderMode = static_cast<RenderMode>((m_CurrentRenderMode + 1) % static_cast<int>(RenderMode::Count));
+		if (keyScancode == SDL_SCANCODE_F1)
+			m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;;
+
+		if (keyScancode == SDL_SCANCODE_F2)
+			m_IsRotating = !m_IsRotating;
+
+		if (keyScancode == SDL_SCANCODE_F3) 
+			m_RenderFireMesh = !m_RenderFireMesh;
+
+		if (keyScancode == SDL_SCANCODE_F4)
+		{
+			for (auto mesh : m_pMeshes)
+			{
+				mesh->ToggleTechnique();
+			}
+		}
+
+		if (keyScancode == SDL_SCANCODE_F5)
+			m_CurrentRenderMode = static_cast<RenderModes>((m_CurrentRenderMode + 1) % static_cast<int>(RenderModesEnd));
+
+		if (keyScancode == SDL_SCANCODE_F6)
+			m_IsNormalMapOn = !m_IsNormalMapOn;
+
+		if (keyScancode == SDL_SCANCODE_F7)
+			m_IsRenderingDepthBuffer = !m_IsRenderingDepthBuffer;
+
+		if (keyScancode == SDL_SCANCODE_F8)
+			m_IsBoundingBoxVisualisation = !m_IsBoundingBoxVisualisation;
+
+		if (keyScancode == SDL_SCANCODE_F9)
+		{
+			for (const auto mesh : m_pMeshes)
+			{
+				mesh->ToggleCullMode();
+			}
+		}
+
+		if (keyScancode == SDL_SCANCODE_F10)
+			m_UniformColor = !m_UniformColor;
 	}
 
-	void Renderer::ToggleIsNormalMapOn()
-	{
-		m_IsNormalMapOn = !m_IsNormalMapOn;
-	}
-
-	void Renderer::ToggleRenderingDepthBuffer()
-	{
-		m_IsRenderingDepthBuffer = !m_IsRenderingDepthBuffer;
-	}
 
 	bool Renderer::SaveBufferToImage() const
 	{
 		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
 	}
 
-	bool Renderer::TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle)
+	bool Renderer::TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle)
 	{
 
-		a = Vector3(Triangle[0], Triangle[1]);
-		b = Vector3(Triangle[1], Triangle[2]);
-		c = Vector3(Triangle[2], Triangle[0]);
+		a = Vector3(triangle[0], triangle[1]);
+		b = Vector3(triangle[1], triangle[2]);
+		c = Vector3(triangle[2], triangle[0]);
 
 		Vector3 n{ Vector3::Cross(a,b).Normalized() };
 
@@ -537,7 +568,7 @@ namespace dae {
 			else
 				e = c;
 
-			Vector3 p{ Triangle[idx], Vector3(P.x,P.y,Triangle[idx].z) };
+			Vector3 p{ triangle[idx], Vector3(P.x,P.y,triangle[idx].z) };
 
 			if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
 			{
@@ -549,12 +580,12 @@ namespace dae {
 		return true;
 	}
 
-	void Renderer::CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, std::array<Vector4, 3>& Triangle) const
+	void Renderer::CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, const std::array<Vector4, 3>& triangle) const
 	{
 
-		Vector3 v0 = Triangle[0];
-		Vector3 v1 = Triangle[1];
-		Vector3 v2 = Triangle[2];
+		Vector3 v0 = triangle[0];
+		Vector3 v1 = triangle[1];
+		Vector3 v2 = triangle[2];
 
 		minX = static_cast<int>(std::floor(std::min({ v0.x, v1.x, v2.x })));
 		minY = static_cast<int>(std::floor(std::min({ v0.y, v1.y, v2.y })));
@@ -568,21 +599,21 @@ namespace dae {
 
 	}
 
-	bool Renderer::IsInFrustum(std::array<Vector4, 3>& Triangle)
+	bool Renderer::IsInFrustum(std::array<Vector4, 3>& triangle)
 	{
 		for (int idx{ 0 }; idx < 3; idx++)
 		{
-			if (Triangle[idx].x < -1 || Triangle[idx].x > 1)
+			if (triangle[idx].x < -1 || triangle[idx].x > 1)
 			{
 				return false;
 			}
 
-			if (Triangle[idx].y < -1 || Triangle[idx].y > 1)
+			if (triangle[idx].y < -1 || triangle[idx].y > 1)
 			{
 				return false;
 			}
 
-			if (Triangle[idx].z < 0 || Triangle[idx].z > 1)
+			if (triangle[idx].z < 0 || triangle[idx].z > 1)
 			{
 				return false;
 			}
@@ -592,40 +623,41 @@ namespace dae {
 		return true;
 	}
 
-	void Renderer::InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights)
+	void Renderer::InterpolateValues(VertexOut& interpolatedValues, const std::array<Vector4, 3>& triangle, 
+		Mesh& currentMesh, const float wInterpolated, int idx, const std::array<float, 3> weights)
 	{
-		const auto& indices = CurrentMesh.GetIndices();
-		const auto& outVertices = CurrentMesh.GetOutVertices();
-		if (CurrentMesh.GetPrimitiveTopology() == PrimitiveTopology::TriangleList) idx *= 3;
+		const auto& indices = currentMesh.GetIndices();
+		const auto& outVertices = currentMesh.GetOutVertices();
+		if (currentMesh.GetPrimitiveTopology() == PrimitiveTopology::TriangleList) idx *= 3;
 
 		const int indice0 = indices[idx];
 		const int indice1 = indices[idx + 1];
 		const int indice2 = indices[idx + 2];
 
-		InterpolatedValues.UV = ((outVertices[indice0].UV / Triangle[0].w) * Weights[0] +
-			(outVertices[indice1].UV / Triangle[1].w) * Weights[1] +
-			(outVertices[indice2].UV / Triangle[2].w) * Weights[2]) * WInterpolated;
+		interpolatedValues.UV = ((outVertices[indice0].UV / triangle[0].w) * weights[0] +
+			(outVertices[indice1].UV / triangle[1].w) * weights[1] +
+			(outVertices[indice2].UV / triangle[2].w) * weights[2]) * wInterpolated;
 
-		InterpolatedValues.Normal = ((outVertices[indice0].Normal / Triangle[0].w) * Weights[0] +
-			(outVertices[indice1].Normal / Triangle[1].w) * Weights[1] +
-			(outVertices[indice2].Normal / Triangle[2].w) * Weights[2]) * WInterpolated;
+		interpolatedValues.Normal = ((outVertices[indice0].Normal / triangle[0].w) * weights[0] +
+			(outVertices[indice1].Normal / triangle[1].w) * weights[1] +
+			(outVertices[indice2].Normal / triangle[2].w) * weights[2]) * wInterpolated;
 
-		InterpolatedValues.Tangent = ((outVertices[indice0].Tangent / Triangle[0].w) * Weights[0] +
-			(outVertices[indice1].Tangent / Triangle[1].w) * Weights[1] +
-			(outVertices[indice2].Tangent / Triangle[2].w) * Weights[2]) * WInterpolated;
+		interpolatedValues.Tangent = ((outVertices[indice0].Tangent / triangle[0].w) * weights[0] +
+			(outVertices[indice1].Tangent / triangle[1].w) * weights[1] +
+			(outVertices[indice2].Tangent / triangle[2].w) * weights[2]) * wInterpolated;
 
-		InterpolatedValues.WorldPosition = ((outVertices[indice0].WorldPosition / Triangle[0].w) * Weights[0] +
-			(outVertices[indice1].WorldPosition / Triangle[1].w) * Weights[1] +
-			(outVertices[indice2].WorldPosition / Triangle[2].w) * Weights[2]) * WInterpolated;
+		interpolatedValues.WorldPosition = ((outVertices[indice0].WorldPosition / triangle[0].w) * weights[0] +
+			(outVertices[indice1].WorldPosition / triangle[1].w) * weights[1] +
+			(outVertices[indice2].WorldPosition / triangle[2].w) * weights[2]) * wInterpolated;
 
-		InterpolatedValues.Position = ((outVertices[indice0].Position / Triangle[0].w) * Weights[0] +
-			(outVertices[indice1].Position / Triangle[1].w) * Weights[1] +
-			(outVertices[indice2].Position / Triangle[2].w) * Weights[2]) * WInterpolated;
+		interpolatedValues.Position = ((outVertices[indice0].Position / triangle[0].w) * weights[0] +
+			(outVertices[indice1].Position / triangle[1].w) * weights[1] +
+			(outVertices[indice2].Position / triangle[2].w) * weights[2]) * wInterpolated;
 
 
 	}
 
-	ColorRGB Renderer::PixelShading(const VertexOut& v, Mesh* currentMesh) const
+	ColorRGB Renderer::PixelShading(const VertexOut& v, const Mesh* currentMesh) const
 	{
 		const ColorRGB ambient{ .025f,.025f,.025f };
 		const Vector3 lightDirection = { .577f,-.577f,.577f };
@@ -678,13 +710,13 @@ namespace dae {
 
 		switch (m_CurrentRenderMode)
 		{
-		case RenderMode::ObservedArea:
+		case RenderModes::ObservedArea:
 			return ColorRGB{ observedArea,observedArea,observedArea };
-		case RenderMode::Combined:
+		case RenderModes::Combined:
 			return (((kd * cd) / PI) + PhongSpecReflec + ambient) * observedArea;
-		case RenderMode::Specular:
+		case RenderModes::Specular:
 			return PhongSpecReflec;
-		case RenderMode::Diffuse:
+		case RenderModes::Diffuse:
 			return ((kd * cd) / PI);
 		default:
 			return ColorRGB{ 0,0,0 };

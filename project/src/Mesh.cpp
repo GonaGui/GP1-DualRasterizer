@@ -71,8 +71,41 @@ Mesh::Mesh(ID3D11Device* pDevice, const std::vector<Vertex>& vertices, const std
 		std::cout << "failed to create inputlayout" << std::endl;
 		return;
 	}
-		
 
+	//Creates Raster states for culling modes
+
+	D3D11_RASTERIZER_DESC rastDesc{};
+	rastDesc.FillMode = D3D11_FILL_SOLID;
+	rastDesc.CullMode = D3D11_CULL_NONE;
+
+	result = pDevice->CreateRasterizerState(&rastDesc, &m_pCullingNone);
+
+	if (FAILED(result))
+	{
+		std::cout << "failed to create RasterStates" << std::endl;
+		return;
+	}
+
+	rastDesc.CullMode = D3D11_CULL_FRONT;
+	result = pDevice->CreateRasterizerState(&rastDesc, &m_pCullingFront);
+
+	if (FAILED(result))
+	{
+		std::cout << "failed to create RasterStates" << std::endl;
+		return;
+	}
+
+	rastDesc.CullMode = D3D11_CULL_BACK;
+	result = pDevice->CreateRasterizerState(&rastDesc, &m_pCullingBack);
+
+
+	if (FAILED(result))
+	{
+		std::cout << "failed to create RasterStates" << std::endl;
+		return;
+	}
+
+	
 	// Create vertex buffer
 	D3D11_BUFFER_DESC bd = {};
 	bd.Usage = D3D11_USAGE_IMMUTABLE;
@@ -139,6 +172,24 @@ Mesh::~Mesh()
 
 void Mesh::Render(ID3D11DeviceContext* pDeviceContext, dae::Matrix& worldMatrix ,dae::Matrix& worldProjViewMatrix,const float* cameraPos) const
 {
+	// 0. Set Raster State
+	switch (m_CurrentCullMode)
+	{
+	case NoCull:
+		pDeviceContext->RSSetState(m_pCullingNone);
+		break;
+	case FrontFaceCull:
+		pDeviceContext->RSSetState(m_pCullingFront);
+		break;
+	case BackFaceCull:
+		pDeviceContext->RSSetState(m_pCullingBack);
+		break;
+	default:
+		std::cout << "NO CULL MODE?!?";
+		return;
+	}
+	
+
 	// 1. Set Primitive Topology
 	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -188,7 +239,7 @@ void Mesh::SetPrimitiveTopology(const PrimitiveTopology primitiveTopologyType)
 void Mesh::UpdateWorldMatrixRotY(float yaw, float deltaSeconds)
 {
 	float newyaw = yaw * deltaSeconds;
-	m_WorldMatrix = m_WorldMatrix.CreateRotationY(newyaw);
+	m_WorldMatrix = m_WorldMatrix.CreateRotationY(newyaw) * m_WorldMatrix;
 }
 
 dae::Matrix Mesh::GetWorldMatrix()
@@ -224,4 +275,14 @@ std::vector<Vertex>& Mesh::GetVertices()
 std::vector<uint32_t>& Mesh::GetIndices()
 {
 	return m_Indices;
+}
+
+void Mesh::ToggleCullMode()
+{
+	m_CurrentCullMode = static_cast<CullModes>((m_CurrentCullMode + 1) % static_cast<int>(CullModesEnd));
+}
+
+CullModes Mesh::GetCurrentCullMode() const
+{
+	return m_CurrentCullMode;
 }

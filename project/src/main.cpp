@@ -59,34 +59,10 @@ int main(int argc, char* args[])
 				break;
 			case SDL_KEYUP:
 				//Test for a key
-				if (e.key.keysym.scancode == SDL_SCANCODE_F1)
-					pRenderer->ToggleIsSoftwareRasterizer();
-				
-				if (e.key.keysym.scancode == SDL_SCANCODE_F2)
-					pRenderer->ToggleRotation();
-
-				if (e.key.keysym.scancode == SDL_SCANCODE_F3);
-					//TODO add turn off fire Fx
-				
-				if (e.key.keysym.scancode == SDL_SCANCODE_F5)
-					pRenderer->ToggleNextRenderMode();
-				
-				if (e.key.keysym.scancode == SDL_SCANCODE_F4)
-					pRenderer->ToggleTechnique();
-
-				if (e.key.keysym.scancode == SDL_SCANCODE_F6)
-					pRenderer->ToggleIsNormalMapOn();
-
-				if (e.key.keysym.scancode == SDL_SCANCODE_F7)
-					pRenderer->ToggleRenderingDepthBuffer();
-
-				if (e.key.keysym.scancode == SDL_SCANCODE_F10)
-					pRenderer->ToggleUniformColor();
-
 				if (e.key.keysym.scancode == SDL_SCANCODE_F11)
 					m_PrintFPS = !m_PrintFPS;
 
-					
+				pRenderer->ToggleOptions(e.key.keysym.scancode);
 				break;
 			default: ;
 			}

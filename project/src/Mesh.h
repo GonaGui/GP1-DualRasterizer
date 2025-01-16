@@ -29,10 +29,18 @@ struct VertexOut
 	dae::Vector4 WorldPosition{};
 };
 
-enum class PrimitiveTopology
+enum PrimitiveTopology
 {
 	TriangleList,
 	TriangleStrip
+};
+
+enum CullModes
+{
+	FrontFaceCull,
+	BackFaceCull,
+	NoCull,
+	CullModesEnd
 };
 
 class Mesh
@@ -61,7 +69,8 @@ public:
 	std::vector<VertexOut>& GetOutVertices();
 	std::vector<Vertex>& GetVertices();
 	std::vector<uint32_t>& GetIndices();
-
+	void ToggleCullMode();
+	CullModes GetCurrentCullMode() const;
 
 private:
 	ID3D11InputLayout*		m_pInputLayout{ nullptr };
@@ -72,6 +81,12 @@ private:
 	ID3D11Buffer*			m_pIndexBuffer{ nullptr };
 	std::vector<uint32_t>	m_Indices{};
 	BaseEffect*				m_pEffect { nullptr };
-	PrimitiveTopology       m_PrimitiveTopology{ PrimitiveTopology::TriangleList };
+	PrimitiveTopology       m_PrimitiveTopology{ TriangleList };
+	CullModes               m_CurrentCullMode{NoCull};
+
 	dae::Matrix				m_WorldMatrix{ };
+
+	ID3D11RasterizerState* m_pCullingFront;
+	ID3D11RasterizerState* m_pCullingBack;
+	ID3D11RasterizerState* m_pCullingNone;
 };

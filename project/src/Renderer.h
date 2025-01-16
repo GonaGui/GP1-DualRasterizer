@@ -23,23 +23,17 @@ namespace dae
 
 		void Update(Timer* pTimer);
 		void Render() const;
-		void ToggleTechnique() const;
-		void ToggleRotation();
-		void ToggleUniformColor();
 
 		bool SaveBufferToImage() const;
-		static bool TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle);
-		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, std::array<Vector4, 3>& Triangle) const;
-		static bool IsInFrustum(std::array<Vector4, 3>& Triangle);
-		static void InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights);
-		ColorRGB PixelShading(const VertexOut& v, Mesh* currentMesh) const;
+		static bool TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle);
+		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, const std::array<Vector4, 3>& triangle) const;
+		static bool IsInFrustum(std::array<Vector4, 3>& triangle);
+		static void InterpolateValues(VertexOut& interpolatedValues, const std::array<Vector4, 3>& triangle, Mesh& currentMesh, float wInterpolated, int idx, std::array<float, 3> weights);
+		ColorRGB PixelShading(const VertexOut& v, const Mesh* currentMesh) const;
 
-		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<VertexOut>& vertices_out, Mesh& CurrentMesh) const;
-		void ConvertToRasterSpace(std::array<Vector4, 3>& Vertices) const;
-		void ToggleIsSoftwareRasterizer();
-		void ToggleNextRenderMode();
-		void ToggleIsNormalMapOn();
-		void ToggleRenderingDepthBuffer();
+		void VertexTransformationFunction(const std::vector<Vertex>& verticesIn, std::vector<VertexOut>& verticesOut, Mesh& currentMesh) const;
+		void ConvertToRasterSpace(std::array<Vector4, 3>& vertices) const;
+		void ToggleOptions(SDL_Scancode keyScancode);
 
 	private:
 		SDL_Window* m_pWindow{};
@@ -53,19 +47,22 @@ namespace dae
 
 		float* m_pDepthBufferPixels{};
 
-		enum RenderMode
+		enum RenderModes 
 		{
 			ObservedArea,
 			Diffuse,
 			Specular,
 			Combined,
-			Count
+			RenderModesEnd
 		};
 
-		RenderMode m_CurrentRenderMode{ Combined };
+		RenderModes m_CurrentRenderMode{ Combined };
+
 		bool m_IsNormalMapOn{ true };
 		bool m_IsRenderingDepthBuffer{};
+		bool m_IsBoundingBoxVisualisation{};
 		bool m_UniformColor{};
+		bool m_RenderFireMesh{true};
 
 		std::vector<float> m_DepthBuffer{};
 		std::vector<int> m_ClosestTriangle{};
@@ -101,8 +98,4 @@ namespace dae
 
 	};
 
-	inline void Renderer::ToggleIsSoftwareRasterizer()
-	{
-		m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;
-	}
 }

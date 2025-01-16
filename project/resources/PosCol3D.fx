@@ -42,9 +42,6 @@ SamplerState samAnisotropic
     MaxAnisotropy = 16; 
 };
 
-RasterizerState gRasterizerState
-{
-};
 
 BlendState gBlendState
 {
@@ -213,7 +210,7 @@ technique11 LinearTechnique
 {
     pass P0
     {
-        SetRasterizerState(gRasterizerState);
+       
         SetDepthStencilState(gDepthStencilState, 0);
         SetBlendState(gBlendState, float4(0.0f, 0.0f, 0.0f, 0.f), 0xFFFFFFFF);
         SetVertexShader( CompileShader( vs_5_0, VS() ) );
@@ -226,7 +223,7 @@ technique11 PointTechnique
 {
     pass P0
     {
-        SetRasterizerState(gRasterizerState);
+       
         SetDepthStencilState(gDepthStencilState, 0);
         SetBlendState(gBlendState, float4(0.0f, 0.0f, 0.0f, 0.f), 0xFFFFFFFF);
         SetVertexShader(CompileShader(vs_5_0, VS()));
@@ -239,7 +236,7 @@ technique11 AnisotropicTechnique
 {
     pass P0
     {
-        SetRasterizerState(gRasterizerState);
+       
         SetDepthStencilState(gDepthStencilState, 0);
         SetBlendState(gBlendState, float4(0.0f, 0.0f, 0.0f, 0.f), 0xFFFFFFFF);
         SetVertexShader(CompileShader(vs_5_0, VS()));
