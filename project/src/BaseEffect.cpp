@@ -16,14 +16,6 @@ BaseEffect::BaseEffect(ID3D11Device* pDevice, const std::wstring& assetFile)
 	if (!m_pMatWorldViewProjVariable->IsValid())
 		std::wcout << L"m_pMatWorldViewProjVariable not valid \n";
 
-	m_pWorldMatrixVariable = m_pEffect->GetVariableByName("gWorldMatrix")->AsMatrix();
-	if (!m_pWorldMatrixVariable->IsValid())
-		std::wcout << L"m_pWorldMatrixVariable not valid \n";
-
-	m_pCameraPosition = m_pEffect->GetVariableByName("gCameraPosition")->AsVector();
-
-	if (!m_pCameraPosition->IsValid())
-		std::wcout << L"m_pCameraPosition not valid \n";
 
 }
 
@@ -154,26 +146,22 @@ void BaseEffect::SetMaterial(std::initializer_list<MatCompFormat>& materialCompo
 {
 	m_Material = new Material(materialComponent, directXDevice);
 
-	int idx{ 0 };
-
-	for (const auto matComp : materialComponent)
+	for (const auto matComp : m_Material->GetMaterialComponents())
 	{
 		
-		m_Material->GetMaterialComponents()[idx].pMatCompEqDirectXResource =
+		matComp.pMatCompEqDirectXResource =
 			m_pEffect->GetVariableByName(matComp.pMatCompDirectXVarName)->AsShaderResource();
 
-		if (!m_Material->GetMaterialComponents()[idx].pMatCompEqDirectXResource->IsValid())
-			std::wcout << m_Material->GetMaterialComponents()[idx].pMatCompDirectXVarName << L" is not valid \n";
+		if (!matComp.pMatCompEqDirectXResource->IsValid())
+			std::wcout << matComp.pMatCompDirectXVarName << L" is not valid \n";
 
-		m_Material->GetMaterialComponents()[idx].pMatCompEqDirectXResource->
-		SetResource(m_Material->GetMaterialComponents()[idx].pMatCompTexture->GetSRV());
+		matComp.pMatCompEqDirectXResource->SetResource(matComp.pMatCompTexture->GetSRV());
 
-		idx++;
 	}
 
 }
 
-MatCompFormat BaseEffect::GetMaterialComponentByName(std::string directXVarName) const
+Material& BaseEffect::GetMaterial() const
 {
-	return m_Material->GetMaterialComponentByName(directXVarName);
+	return *m_Material;
 }

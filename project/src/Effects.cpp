@@ -17,6 +17,14 @@ Effects::Effects(ID3D11Device* pDevice, const std::wstring& assetFile): BaseEffe
 			std::wcout << "The " << techniques << L" is not valid\n";
 	}
 
+	m_pWorldMatrixVariable = m_pEffect->GetVariableByName("gWorldMatrix")->AsMatrix();
+	if (!m_pWorldMatrixVariable->IsValid())
+		std::wcout << L"m_pWorldMatrixVariable not valid \n";
+
+	m_pCameraPosition = m_pEffect->GetVariableByName("gCameraPosition")->AsVector();
+
+	if (!m_pCameraPosition->IsValid())
+		std::wcout << L"m_pCameraPosition not valid \n";
 }
 
 void Effects::UpdateData(const float* worldProjViewMatrix, const float* worldMatrix, const float* cameraPos) const

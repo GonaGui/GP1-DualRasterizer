@@ -15,6 +15,8 @@ void ShutDown(SDL_Window* pWindow)
 	SDL_Quit();
 }
 
+bool m_PrintFPS{};
+
 int main(int argc, char* args[])
 {
 	//Unreferenced parameters
@@ -57,14 +59,34 @@ int main(int argc, char* args[])
 				break;
 			case SDL_KEYUP:
 				//Test for a key
+				if (e.key.keysym.scancode == SDL_SCANCODE_F1)
+					pRenderer->ToggleIsSoftwareRasterizer();
+				
 				if (e.key.keysym.scancode == SDL_SCANCODE_F2)
-				{
-					pRenderer->ToggleTechnique();
-				}
-				if (e.key.keysym.scancode == SDL_SCANCODE_F5)
-				{
 					pRenderer->ToggleRotation();
-				}
+
+				if (e.key.keysym.scancode == SDL_SCANCODE_F3);
+					//TODO add turn off fire Fx
+				
+				if (e.key.keysym.scancode == SDL_SCANCODE_F5)
+					pRenderer->ToggleNextRenderMode();
+				
+				if (e.key.keysym.scancode == SDL_SCANCODE_F4)
+					pRenderer->ToggleTechnique();
+
+				if (e.key.keysym.scancode == SDL_SCANCODE_F6)
+					pRenderer->ToggleIsNormalMapOn();
+
+				if (e.key.keysym.scancode == SDL_SCANCODE_F7)
+					pRenderer->ToggleRenderingDepthBuffer();
+
+				if (e.key.keysym.scancode == SDL_SCANCODE_F10)
+					pRenderer->ToggleUniformColor();
+
+				if (e.key.keysym.scancode == SDL_SCANCODE_F11)
+					m_PrintFPS = !m_PrintFPS;
+
+					
 				break;
 			default: ;
 			}
@@ -81,8 +103,12 @@ int main(int argc, char* args[])
 		printTimer += pTimer->GetElapsed();
 		if (printTimer >= 1.f)
 		{
-			printTimer = 0.f;
-			std::cout << "dFPS: " << pTimer->GetdFPS() << std::endl;
+			if (m_PrintFPS)
+			{
+				printTimer = 0.f;
+				std::cout << "dFPS: " << pTimer->GetdFPS() << std::endl;
+			}
+			
 		}
 	}
 	pTimer->Stop();

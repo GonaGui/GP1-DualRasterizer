@@ -8,7 +8,7 @@ set(SOURCES
 	"src/Vector2.cpp"
     "src/Vector3.cpp"
     "src/Vector4.cpp"
-    "src/Utils.cpp"
+    
     "src/Effects.cpp"
     "src/Mesh.cpp"
     "src/Texture.cpp"

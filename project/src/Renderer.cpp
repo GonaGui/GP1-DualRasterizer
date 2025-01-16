@@ -44,7 +44,7 @@ namespace dae {
 
 		m_MeshEffects["VehicleEffect"] = new Effects(m_pDevice, L"Resources/PosCol3D.fx");
 
-		m_MeshEffects["FireEffect"] = new Effects(m_pDevice, L"Resources/PosColorAlpha.fx");
+		m_MeshEffects["FireEffect"] = new AlphaEffect(m_pDevice, L"Resources/PosColorAlpha.fx");
 
 		Utils::ParseOBJ("Resources/vehicle.obj", vertices, indices,false);
 
@@ -55,18 +55,21 @@ namespace dae {
 			MatCompFormat("gSpecularMap","Resources/vehicle_specular.png"),
 			MatCompFormat("gGlossinessMap","Resources/vehicle_gloss.png") } });
 
-		Utils::ParseOBJ("Resources/fireFX.obj", vertices, indices, false);
-
-		m_pMeshes.push_back(new Mesh
-			{ m_pDevice,vertices,indices,m_MeshEffects["FireEffect"],
-			{ MatCompFormat("gDiffuseMap", "Resources/fireFX_diffuse.png") } });
-
-
+	 	Utils::ParseOBJ("Resources/fireFX.obj", vertices, indices, false);
+	 
+	 	m_pMeshes.push_back(new Mesh
+	 		{ m_pDevice,vertices,indices,m_MeshEffects["FireEffect"],
+	 		{ MatCompFormat("gDiffuseMap", "Resources/fireFX_diffuse.png") } });
+		
+		for (auto& mesh: m_pMeshes )
+		{
+			mesh->SetWorldMatrix(Matrix::CreateTranslation(0,0,50));
+		}
 		m_DepthBuffer.resize(m_Width * m_Height, FLT_MAX);
 
 		m_ClosestTriangle.resize(m_DepthBuffer.size());
 
-		m_Camera.Initialize(45.f, { .0f,.0f,-50.f }, m_AspectRatio);
+		m_Camera.Initialize(45.f, { .0f,.0f,0.f }, m_AspectRatio);
 
 	}
 
@@ -103,28 +106,202 @@ namespace dae {
 
 	void Renderer::Render() const
 	{
-		if (!m_IsInitialized)
-			return;
+		ColorRGB BackgroundColor{ .1f, .1f, .1f };
 
-		// 1. CLEAR RTV & DSV
-		constexpr float color[4] = { 0.f,0.f,0.3f,1.f };
-		m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
-		m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
-
-		// 1.5. GetWorldProjectionViewMatrix
-		for (auto mesh : m_pMeshes)
+		if (m_IsSoftwareRasterizer)
 		{
-			Matrix WorldViewProjectionMatrix = mesh->GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
-			Matrix WorldMatrix = mesh->GetWorldMatrix();
-
-			// 2. SET PIPELINE + INVOKE DRAW CALLS (= RENDER)
-			mesh->Render(m_pDeviceContext, WorldMatrix, WorldViewProjectionMatrix, m_Camera.GetOrigin());
-
-		}
+			//@START
+			//Lock BackBuffer
+			if (m_UniformColor == false)
+			{
+				BackgroundColor = { 0.39,0.39 ,0.39 };
+			}
 	
+			SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format,
+				static_cast<uint8_t>(BackgroundColor.r * 255),
+				static_cast<uint8_t>(BackgroundColor.g * 255),
+				static_cast<uint8_t>(BackgroundColor.b * 255)));
+			SDL_LockSurface(m_pBackBuffer);
 
-		// 3. PRESENT BACKBUFFER (SWAP)
-		m_pSwapChain->Present(0, 0);
+			for (int idx{}; idx < m_Width * m_Height; idx++)
+			{
+				m_pDepthBufferPixels[idx] = FLT_MAX;
+			}
+
+			for (auto currentMesh: m_pMeshes)
+			{
+				auto& VerticesOut = currentMesh->GetOutVertices();
+				auto  Indices = currentMesh->GetIndices();
+				VertexTransformationFunction(currentMesh->GetVertices(),
+					VerticesOut, *currentMesh);
+				Vector3 a{};
+				Vector3 b{};
+				Vector3 c{};
+
+				int NrOfTriangles;
+
+				if (currentMesh->GetPrimitiveTopology() == PrimitiveTopology::TriangleList)
+				{
+					NrOfTriangles = Indices.size() / 3;
+				}
+
+				else
+				{
+					NrOfTriangles = Indices.size() - 2;
+				}
+
+				//RENDER LOGIC
+				//loops through all triangles
+				for (int idx{ 0 }; idx < NrOfTriangles; idx++)
+				{
+					uint32_t indice0;
+					uint32_t indice1;
+					uint32_t indice2;
+
+					if (currentMesh->GetPrimitiveTopology() == PrimitiveTopology::TriangleStrip)
+					{
+						indice0 = Indices[idx];
+						indice1 = Indices[idx + 1];
+						indice2 = Indices[idx + 2];
+
+						//never swapped the indices since it seems to work so far and swapping them instead adds a weird shadow
+					}
+
+					else
+					{
+						indice0 = Indices[idx * 3];
+						indice1 = Indices[idx * 3 + 1];
+						indice2 = Indices[idx * 3 + 2];
+					}
+
+					int minX;
+					int minY;
+					int maxX;
+					int maxY;
+
+					std::array<Vector4, 3> Triangle{ VerticesOut[indice0].Position,
+													 VerticesOut[indice1].Position,
+													 VerticesOut[indice2].Position };
+
+					if (!IsInFrustum(Triangle)) continue;
+
+					ConvertToRasterSpace(Triangle);
+					CalculateBoundingBox(minX, minY, maxX, maxY, Triangle);
+
+					for (int py{ minY }; py < maxY; ++py)
+					{
+						for (int px{ minX }; px < maxX; ++px)
+						{
+							const int DepthBufferIndex{ px + (py * m_Width) };
+
+							ColorRGB finalColor{ 0, 0, 0 };
+							Vector2 P{ px + 0.5f,py + 0.5f };
+
+
+							//if point in triangle
+							if (TriangleHitTest(idx, P, a, b, c, Triangle) == true)
+							{
+								float TriangleArea(Vector2::Cross(a.GetXY(), b.GetXY()));
+
+								std::array<float, 3> Weights{ Vector2::Cross(Vector2(P, Triangle[1].GetXY()), b.GetXY()),
+													 Vector2::Cross(Vector2(P, Triangle[2].GetXY()), c.GetXY()),
+													 Vector2::Cross(Vector2(P, Triangle[0].GetXY()), a.GetXY()), };
+
+
+								Weights[0] /= TriangleArea;
+								Weights[1] /= TriangleArea;
+								Weights[2] /= TriangleArea;
+
+
+								float ZInterpolated = 1.f / (Weights[0] / Triangle[0].z +
+									Weights[1] / Triangle[1].z +
+									Weights[2] / Triangle[2].z);
+
+								float WInterpolated = 1.f / (Weights[0] / Triangle[0].w +
+									Weights[1] / Triangle[1].w +
+									Weights[2] / Triangle[2].w);
+
+								if (ZInterpolated < m_pDepthBufferPixels[DepthBufferIndex])
+								{
+									if (ZInterpolated > 0 && ZInterpolated < 1)
+									{
+										m_pDepthBufferPixels[DepthBufferIndex] = ZInterpolated;
+										VertexOut InterpolatedValues;
+
+										InterpolateValues(InterpolatedValues, Triangle, *currentMesh
+											, WInterpolated, idx, Weights);
+
+										InterpolatedValues.Position.z = ZInterpolated;
+										InterpolatedValues.Position.w = WInterpolated;
+
+										if (m_IsRenderingDepthBuffer)
+										{
+											Utils::Remap(ZInterpolated, 0.985f, 1);
+											finalColor = ColorRGB(ZInterpolated, ZInterpolated, ZInterpolated);
+										}
+
+										else finalColor = PixelShading(InterpolatedValues,currentMesh);
+
+										//Update Color in Buffer
+										finalColor.MaxToOne();
+
+										m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+											static_cast<uint8_t>(finalColor.r * 255),
+											static_cast<uint8_t>(finalColor.g * 255),
+											static_cast<uint8_t>(finalColor.b * 255));
+
+									}
+
+
+								}
+
+							}
+
+						}
+					}
+
+
+				}
+			}
+
+			//@END
+			//Update SDL Surface
+			SDL_UnlockSurface(m_pBackBuffer);
+			SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
+			SDL_UpdateWindowSurface(m_pWindow);
+		}
+
+		else
+		{
+			if (m_UniformColor == false)
+			{
+				BackgroundColor = { .39f, .59f, .93f };
+			}
+
+			if (!m_IsInitialized)
+				return;
+
+			// 1. CLEAR RTV & DSV
+			float color[4] = { BackgroundColor.r, BackgroundColor.g, BackgroundColor.b };
+			m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
+			m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
+
+			// 1.5. GetWorldProjectionViewMatrix
+			for (auto mesh : m_pMeshes)
+			{
+				Matrix WorldViewProjectionMatrix = mesh->GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
+				Matrix WorldMatrix = mesh->GetWorldMatrix();
+
+				// 2. SET PIPELINE + INVOKE DRAW CALLS (= RENDER)
+				mesh->Render(m_pDeviceContext, WorldMatrix, WorldViewProjectionMatrix, m_Camera.GetOrigin());
+
+			}
+
+
+			// 3. PRESENT BACKBUFFER (SWAP)
+			m_pSwapChain->Present(0, 0);
+		}
+		
 
 	}
 
@@ -139,6 +316,11 @@ namespace dae {
 	void Renderer::ToggleRotation()
 	{
 		m_IsRotating = !m_IsRotating;
+	}
+
+	void Renderer::ToggleUniformColor()
+	{
+		m_UniformColor = !m_UniformColor;
 	}
 
 	HRESULT Renderer::InitializeDirectX()
@@ -281,10 +463,11 @@ namespace dae {
 		return result;
 	}
 
-
 	void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<VertexOut>& vertices_out, Mesh& CurrentMesh) const
 	{
 		vertices_out.resize(vertices_in.size());
+
+		Matrix worldMatrix = CurrentMesh.GetWorldMatrix();
 
 		Matrix WorldViewProjectionMatrix = CurrentMesh.GetWorldMatrix() * m_Camera.viewMatrix * m_Camera.projectionMatrix;
 
@@ -298,20 +481,25 @@ namespace dae {
 
 			vertices_out[idx].UV = vertices_in[idx].UV;
 			vertices_out[idx].Color = vertices_in[idx].Color;
-			vertices_out[idx].Normal = CurrentMesh.GetWorldMatrix().TransformVector(vertices_in[idx].Normal).Normalized();
-			vertices_out[idx].Tangent = CurrentMesh.GetWorldMatrix().TransformVector(vertices_in[idx].Tangent).Normalized();
-			vertices_out[idx].WorldPosition = (CurrentMesh.GetWorldMatrix().TransformPoint(vertices_in[idx].Position)).ToVector4();
+			vertices_out[idx].Normal = worldMatrix.TransformVector(vertices_in[idx].Normal).Normalized();
+			vertices_out[idx].Tangent = worldMatrix.TransformVector(vertices_in[idx].Tangent).Normalized();
+			vertices_out[idx].WorldPosition = (worldMatrix.TransformPoint(vertices_in[idx].Position)).ToVector4();
 		}
 
 	}
 
-	void Renderer::ConvertToRasterSpace(std::array<Vector4, 3>& Triangle)
+	void Renderer::ConvertToRasterSpace(std::array<Vector4, 3>& Triangle) const
 	{
 		for (int idx{ 0 }; idx < 3; idx++)
 		{
 			Triangle[idx].x = ((Triangle[idx].x + 1) / 2) * m_Width;
 			Triangle[idx].y = ((1 - Triangle[idx].y) / 2) * m_Height;
 		}
+	}
+
+	void Renderer::ToggleNextRenderMode()
+	{
+		m_CurrentRenderMode = static_cast<RenderMode>((m_CurrentRenderMode + 1) % static_cast<int>(RenderMode::Count));
 	}
 
 	void Renderer::ToggleIsNormalMapOn()
@@ -329,7 +517,7 @@ namespace dae {
 		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
 	}
 
-	bool Renderer::TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle) const
+	bool Renderer::TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle)
 	{
 
 		a = Vector3(Triangle[0], Triangle[1]);
@@ -380,7 +568,7 @@ namespace dae {
 
 	}
 
-	bool Renderer::IsInFrustum(std::array<Vector4, 3>& Triangle) const
+	bool Renderer::IsInFrustum(std::array<Vector4, 3>& Triangle)
 	{
 		for (int idx{ 0 }; idx < 3; idx++)
 		{
@@ -406,73 +594,84 @@ namespace dae {
 
 	void Renderer::InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights)
 	{
+		const auto& indices = CurrentMesh.GetIndices();
+		const auto& outVertices = CurrentMesh.GetOutVertices();
 		if (CurrentMesh.GetPrimitiveTopology() == PrimitiveTopology::TriangleList) idx *= 3;
 
-		int indice0 = CurrentMesh.GetIndices()[idx];
-		int indice1 = CurrentMesh.GetIndices()[idx + 1];
-		int indice2 = CurrentMesh.GetIndices()[idx + 2];
+		const int indice0 = indices[idx];
+		const int indice1 = indices[idx + 1];
+		const int indice2 = indices[idx + 2];
 
-		InterpolatedValues.UV = ((CurrentMesh.GetOutVertices()[indice0].UV / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].UV / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].UV / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.UV = ((outVertices[indice0].UV / Triangle[0].w) * Weights[0] +
+			(outVertices[indice1].UV / Triangle[1].w) * Weights[1] +
+			(outVertices[indice2].UV / Triangle[2].w) * Weights[2]) * WInterpolated;
 
-		InterpolatedValues.Normal = ((CurrentMesh.GetOutVertices()[indice0].Normal / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].Normal / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].Normal / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.Normal = ((outVertices[indice0].Normal / Triangle[0].w) * Weights[0] +
+			(outVertices[indice1].Normal / Triangle[1].w) * Weights[1] +
+			(outVertices[indice2].Normal / Triangle[2].w) * Weights[2]) * WInterpolated;
 
-		InterpolatedValues.Tangent = ((CurrentMesh.GetOutVertices()[indice0].Tangent / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].Tangent / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].Tangent / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.Tangent = ((outVertices[indice0].Tangent / Triangle[0].w) * Weights[0] +
+			(outVertices[indice1].Tangent / Triangle[1].w) * Weights[1] +
+			(outVertices[indice2].Tangent / Triangle[2].w) * Weights[2]) * WInterpolated;
 
-		InterpolatedValues.WorldPosition = ((CurrentMesh.GetOutVertices()[indice0].WorldPosition / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].WorldPosition / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].WorldPosition / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.WorldPosition = ((outVertices[indice0].WorldPosition / Triangle[0].w) * Weights[0] +
+			(outVertices[indice1].WorldPosition / Triangle[1].w) * Weights[1] +
+			(outVertices[indice2].WorldPosition / Triangle[2].w) * Weights[2]) * WInterpolated;
 
-		InterpolatedValues.Position = ((CurrentMesh.GetOutVertices()[indice0].Position / Triangle[0].w) * Weights[0] +
-			(CurrentMesh.GetOutVertices()[indice1].Position / Triangle[1].w) * Weights[1] +
-			(CurrentMesh.GetOutVertices()[indice2].Position / Triangle[2].w) * Weights[2]) * WInterpolated;
+		InterpolatedValues.Position = ((outVertices[indice0].Position / Triangle[0].w) * Weights[0] +
+			(outVertices[indice1].Position / Triangle[1].w) * Weights[1] +
+			(outVertices[indice2].Position / Triangle[2].w) * Weights[2]) * WInterpolated;
 
 
 	}
 
-	ColorRGB Renderer::PixelShading(const VertexOut& v, Mesh& currentMesh)
+	ColorRGB Renderer::PixelShading(const VertexOut& v, Mesh* currentMesh) const
 	{
-		ColorRGB ambient{ .03f,.03f,.03f };
-		Vector3 lightDirection = { .577f,-.577f,.577f };
+		const ColorRGB ambient{ .025f,.025f,.025f };
+		const Vector3 lightDirection = { .577f,-.577f,.577f };
 
-		float kd = 7.f;
-		ColorRGB cd = currentMesh.GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
+		const float kd = 7.f;
+		const ColorRGB cd = currentMesh->GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
 
 		// Grabs the Normal colors of the Normal map and then converts it to a usable format
-		Vector3 NormalMap;
+		Vector3 NormalMap { v.Normal};
 
 		if (m_IsNormalMapOn)
 		{
-			ColorRGB normalMapColor = currentMesh.GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
-			Vector3 binormal = Vector3::Cross(v.Normal, v.Tangent);
-			Matrix tangentSpaceAxis = Matrix{ v.Tangent, binormal, v.Normal, Vector3{} };
-			NormalMap = { normalMapColor.r,normalMapColor.g,normalMapColor.b };
-			NormalMap = 2.f * NormalMap - Vector3{ 1.f,1.f,1.f };
-			NormalMap = tangentSpaceAxis.TransformVector(NormalMap);
+			if (currentMesh->HasMaterialByComponentName("gNormalMap"))
+			{
+				ColorRGB normalMapColor = currentMesh->GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
+				const auto tangent = v.Tangent.Normalized();
+				const auto normal = v.Normal.Normalized();
+				const Vector3 binormal = Vector3::Cross(normal, tangent);
+				const Matrix tangentSpaceAxis = Matrix{ tangent, binormal, normal, Vector3{} };
+				NormalMap = { normalMapColor.r,normalMapColor.g,normalMapColor.b };
+				NormalMap = 2.f * NormalMap - Vector3{ 1.f,1.f,1.f };
+				NormalMap = tangentSpaceAxis.TransformVector(NormalMap);
+			}
+
 		}
 
-		else
+		const float observedArea = Vector3::Dot(NormalMap, -lightDirection);
+		ColorRGB PhongSpecReflec{ };
+
+
+		if (currentMesh->HasMaterialByComponentName("gSpecularMap") && 
+			currentMesh->HasMaterialByComponentName("gGlossinessMap"))
 		{
-			NormalMap = v.Normal;
+			const ColorRGB specularMapColor = currentMesh->GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
+			const float shininess = 25.f;
+
+			const ColorRGB glossMapColor = currentMesh->GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
+
+
+			const Vector3 reflect = Vector3::Reflect(-lightDirection, NormalMap);
+			const Vector3 invViewDirection = (m_Camera.origin - v.WorldPosition.GetXYZ()).Normalized();
+			const float cosa{ std::max(Vector3::Dot(reflect, -invViewDirection), 0.f) };
+
+			PhongSpecReflec = ColorRGB{ 1,1,1 } *specularMapColor.r * (std::pow(cosa, glossMapColor.r * shininess));
 		}
-
-
-
-		float observedArea = Vector3::Dot(NormalMap, -lightDirection);
-
-		float shininess = 25.f;
-		ColorRGB glossMapColor = currentMesh.GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
-		ColorRGB specularMapColor = currentMesh.GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
-		specularMapColor *= shininess;
-		Vector3 reflect = -lightDirection - 2 * NormalMap * observedArea;
-		Vector4 viewDirection = v.WorldPosition -m_Camera.origin.ToPoint4().Normalized();
-		float cosa{ std::max(Vector3::Dot(reflect, viewDirection), 0.f) };
-		ColorRGB PhongSpecReflec = ColorRGB{ 1,1,1 } *glossMapColor.r * (std::pow(cosa, specularMapColor.r));
+		
 
 
 		if (observedArea <= 0) return ColorRGB{ 0,0,0 };

@@ -25,16 +25,18 @@ namespace dae
 		void Render() const;
 		void ToggleTechnique() const;
 		void ToggleRotation();
+		void ToggleUniformColor();
 
 		bool SaveBufferToImage() const;
-		bool TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle) const;
+		static bool TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, std::array<Vector4, 3>& Triangle);
 		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, std::array<Vector4, 3>& Triangle) const;
-		bool IsInFrustum(std::array<Vector4, 3>& Triangle) const;
-		void InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights);
-		ColorRGB PixelShading(const VertexOut& v, Mesh& currentMesh);
+		static bool IsInFrustum(std::array<Vector4, 3>& Triangle);
+		static void InterpolateValues(VertexOut& InterpolatedValues, std::array<Vector4, 3>& Triangle, Mesh& CurrentMesh, float WInterpolated, int idx, std::array<float, 3> Weights);
+		ColorRGB PixelShading(const VertexOut& v, Mesh* currentMesh) const;
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<VertexOut>& vertices_out, Mesh& CurrentMesh) const;
-		void ConvertToRasterSpace(std::array<Vector4, 3>& Vertices) ;
+		void ConvertToRasterSpace(std::array<Vector4, 3>& Vertices) const;
+		void ToggleIsSoftwareRasterizer();
 		void ToggleNextRenderMode();
 		void ToggleIsNormalMapOn();
 		void ToggleRenderingDepthBuffer();
@@ -60,9 +62,10 @@ namespace dae
 			Count
 		};
 
-		RenderMode m_CurrentRenderMode{ ObservedArea };
+		RenderMode m_CurrentRenderMode{ Combined };
 		bool m_IsNormalMapOn{ true };
 		bool m_IsRenderingDepthBuffer{};
+		bool m_UniformColor{};
 
 		std::vector<float> m_DepthBuffer{};
 		std::vector<int> m_ClosestTriangle{};
@@ -86,6 +89,7 @@ namespace dae
 		Matrix	m_WorldMatrix{};
 
 		bool m_IsRotating{};
+		bool m_IsSoftwareRasterizer{};
 
 
 
@@ -96,4 +100,9 @@ namespace dae
 
 
 	};
+
+	inline void Renderer::ToggleIsSoftwareRasterizer()
+	{
+		m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;
+	}
 }

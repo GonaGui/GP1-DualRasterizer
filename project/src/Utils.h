@@ -162,5 +162,21 @@ namespace dae
 		}
 #pragma warning(pop)
 
+		float Remap(float& value, float rangeBeginning, float rangeEnd)
+		{
+			if (value < rangeBeginning)
+			{
+				return 0; //for the purpose of this function if the value isnt within the desired range we just return
+			}
+
+			float range = rangeEnd - rangeBeginning;
+
+			float valueRange = value - rangeBeginning;
+
+			value = valueRange / range * 1 + 0; //where 1 is would be the new range whilst where 0 is would be the smallest of the new range
+			// eg.: where 1 is it could be 5 and where 0 is also 5. that would be for a range from 5-10
+			return value;
+		}
+
 	}
 }

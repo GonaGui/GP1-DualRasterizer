@@ -89,7 +89,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Point(VS_OUTPUT input) : SV_TARGET
 {
-    float3 ambient = float3(0.03f, 0.03f, 0.03f);
+    float3 ambient = float3(0.025f, 0.025f, 0.025f);
     float3 viewDirection = normalize(gCameraPosition - input.WorldPosition.xyz);
 
     // Sample Maps

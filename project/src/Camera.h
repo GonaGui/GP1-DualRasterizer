@@ -23,8 +23,8 @@ namespace dae
 		float fovAngle{ 45.f };
 		float previousfovAngle{ fovAngle };
 		float FOV{};
-		float rotSpeed{ 10 };
-		float movSpeed{ 20 };
+		float rotSpeed{ 3 };
+		float movSpeed{ 100 };
 		float nearPlane{ .1f };
 		float farPlane{100.f};
 
@@ -91,34 +91,47 @@ namespace dae
 			int mouseX{}, mouseY{};
 			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
-			Vector3 forwardVec = forward.Normalized() * movSpeed * deltaTime;
+			Vector3 forwardVec = forward.Normalized() * movSpeed;
 
-			Vector3 rightVector = Vector3{}.Cross(up, forward).Normalized() * movSpeed * deltaTime;
+			Vector3 rightVector = right * movSpeed ;
 
-			Vector3 upVector = Vector3{}.Cross(forward, right).Normalized() * movSpeed * deltaTime;
+			Vector3 upVector = up * movSpeed;
 
 
 			if (mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT) && mouseState & SDL_BUTTON(SDL_BUTTON_LEFT))
 			{
 				if (mouseY > 0)
 				{
-					origin -= upVector * 3;
+					origin -= upVector * 3 * deltaTime;
 				}
 
 				if (mouseY < 0)
 				{
-					origin += upVector * 3;
+					origin += upVector * 3 * deltaTime;
 				}
 			}
 
 			// Process mouse movements (relative to the last frame)
 			else if (mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
 			{
-
-				if (mouseX != 0 || mouseY != 0)
+				if (mouseY > 0)
 				{
-					totalPitch += mouseY * rotSpeed * deltaTime;
-					totalYaw += mouseX * rotSpeed * deltaTime;
+					totalPitch += rotSpeed * deltaTime;
+				}
+
+				if (mouseY < 0)
+				{
+					totalPitch -= rotSpeed * deltaTime;
+				}
+				
+				if (mouseX > 0)
+				{
+					totalYaw += rotSpeed * deltaTime;
+				}
+
+				if (mouseX < 0)
+				{
+					totalYaw -= rotSpeed * deltaTime;
 				}
 			}
 
@@ -127,47 +140,44 @@ namespace dae
 
 				if (mouseY > 0)
 				{
-					origin -= forwardVec * movSpeed;
+					origin -= (forwardVec * 3) * deltaTime;
 				}
 
 				if (mouseY < 0)
 				{
-					origin += forwardVec * movSpeed;
+					origin += (forwardVec * 3) * deltaTime;
 				}
-
 				
 			}
 
-
-
 			if (pKeyboardState[SDL_SCANCODE_W])
 			{
-				origin += forwardVec;
+				origin += forwardVec * deltaTime;
 			}
 
 			if (pKeyboardState[SDL_SCANCODE_S])
 			{
-				origin -= forwardVec;
+				origin -= forwardVec * deltaTime;
 			}
 
 			if (pKeyboardState[SDL_SCANCODE_D])
 			{
-				origin += rightVector;
+				origin += rightVector * deltaTime;
 			}
 
 			if (pKeyboardState[SDL_SCANCODE_A])
 			{
-				origin -= rightVector;
+				origin -= rightVector * deltaTime;
 			}
 
 			if (pKeyboardState[SDL_SCANCODE_SPACE])
 			{
-				origin += upVector;
+				origin += upVector * deltaTime;
 			}
 
 			if (pKeyboardState[SDL_SCANCODE_LSHIFT])
 			{
-				origin -= upVector;
+				origin -= upVector * deltaTime;
 			}
 
 			Matrix totalRotation = Matrix::CreateRotation(Vector3(-totalPitch, totalYaw, 0));

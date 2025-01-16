@@ -188,7 +188,7 @@ void Mesh::SetPrimitiveTopology(const PrimitiveTopology primitiveTopologyType)
 void Mesh::UpdateWorldMatrixRotY(float yaw, float deltaSeconds)
 {
 	float newyaw = yaw * deltaSeconds;
-	m_WorldMatrix *= m_WorldMatrix.CreateRotationY(newyaw);
+	m_WorldMatrix = m_WorldMatrix.CreateRotationY(newyaw);
 }
 
 dae::Matrix Mesh::GetWorldMatrix()
@@ -196,17 +196,32 @@ dae::Matrix Mesh::GetWorldMatrix()
 	return m_WorldMatrix;
 }
 
-MatCompFormat Mesh::GetMaterialComponentByName(std::string directXVarName) const
+void Mesh::SetWorldMatrix(dae::Matrix newMatrix)
 {
-	return m_pEffect->GetMaterialComponentByName(directXVarName);
+	m_WorldMatrix = newMatrix;
 }
 
-std::vector<VertexOut> Mesh::GetOutVertices()
+MatCompFormat& Mesh::GetMaterialComponentByName(std::string directXVarName) const
+{
+	return m_pEffect->GetMaterial().GetMaterialComponentByName(directXVarName);
+}
+
+bool Mesh::HasMaterialByComponentName(std::string directXVarName) const
+{
+	return m_pEffect->GetMaterial().DoesMaterialComponentExistByName(directXVarName);
+}
+
+std::vector<VertexOut>& Mesh::GetOutVertices()
 {
 	return m_VerticesOut;
 }
 
-std::vector<uint32_t> Mesh::GetIndices()
+std::vector<Vertex>& Mesh::GetVertices()
+{
+	return m_Vertices;
+}
+
+std::vector<uint32_t>& Mesh::GetIndices()
 {
 	return m_Indices;
 }

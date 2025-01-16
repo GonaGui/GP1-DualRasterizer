@@ -16,7 +16,7 @@ class Texture
 public:
 	~Texture();
 	Texture();
-	Texture* LoadFromFile(ID3D11Device* pDevice, const std::string& path);
+	void LoadFromFile(ID3D11Device* pDevice, const std::string& path);
 	ID3D11ShaderResourceView* GetSRV();
 	dae::ColorRGB Sample(const dae::Vector2& uv) const;
 private:

@@ -13,19 +13,25 @@ Texture::~Texture()
 
 Texture::Texture()
 {
+	if (m_pSurface)
+	{
+		SDL_FreeSurface(m_pSurface);
+		m_pSurface = nullptr;
+	}
 }
 
-Texture* Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
+void Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 {
 	SDL_Surface* surface = IMG_Load(path.c_str());
 
-	Texture* texture = new Texture{ surface };
+	m_pSurface = surface;
+	m_pSurfacePixels = static_cast<uint32_t*>(surface->pixels);
 
 	SDL_Surface* pSurface = IMG_Load(path.c_str());
 	if (!pSurface)
 	{
 		std::cout << "Failed to load image: " << path << " SDL_Error: " << SDL_GetError() << std::endl;
-		return nullptr;
+		return;
 	}
 
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -52,7 +58,7 @@ Texture* Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 	if (FAILED(hr))
 	{
 		std::cout << "failed to Create Texture2D" << std::endl;
-		return nullptr;
+		return ;
 	}
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
@@ -64,11 +70,9 @@ Texture* Texture::LoadFromFile(ID3D11Device* pDevice, const std::string& path)
 	if (FAILED(hr))
 	{
 		std::cout << "failed to Create Shader Resource View" << std::endl;
-		return nullptr;
+		return ;
 	}
 
-
-	return texture;
 }
 
 ID3D11ShaderResourceView* Texture::GetSRV()
