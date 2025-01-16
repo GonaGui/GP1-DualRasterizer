@@ -5,6 +5,8 @@
 #include "Effects.h"
 #include "Mesh.h"
 
+#include <stdlib.h>
+
 
 struct SDL_Window;
 struct SDL_Surface;
@@ -35,6 +37,7 @@ namespace dae
 		void VertexTransformationFunction(const std::vector<Vertex>& verticesIn, std::vector<VertexOut>& verticesOut, Mesh& currentMesh) const;
 		void ConvertToRasterSpace(std::array<Vector4, 3>& vertices) const;
 		void ToggleOptions(SDL_Scancode keyScancode);
+		static std::string OnOrOff(bool trueOrFalse);
 
 	private:
 		SDL_Window* m_pWindow{};

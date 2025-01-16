@@ -282,12 +282,17 @@ std::vector<uint32_t>& Mesh::GetIndices()
 
 void Mesh::ToggleCullMode()
 {
-	m_CurrentCullMode = static_cast<CullModes>((m_CurrentCullMode + 1) % static_cast<int>(CullModesEnd));
+	if (!m_UsesTransparency) m_CurrentCullMode = static_cast<CullModes>((m_CurrentCullMode + 1) % static_cast<int>(CullModesEnd));
 }
 
 CullModes Mesh::GetCurrentCullMode() const
 {
 	return m_CurrentCullMode;
+}
+
+std::string Mesh::GetCurrentTechnique() const
+{
+	return m_pEffect->GetCurrentTechnique();
 }
 
 bool Mesh::GetUsesTransparency() const

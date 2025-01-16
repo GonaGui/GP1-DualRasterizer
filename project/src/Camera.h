@@ -97,7 +97,7 @@ namespace dae
 
 			Vector3 upVector = up * movSpeed;
 
-
+			// Process mouse movements (relative to the last frame)
 			if (mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT) && mouseState & SDL_BUTTON(SDL_BUTTON_LEFT))
 			{
 				if (mouseY > 0)
@@ -111,7 +111,6 @@ namespace dae
 				}
 			}
 
-			// Process mouse movements (relative to the last frame)
 			else if (mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
 			{
 				if (mouseY > 0)
@@ -147,6 +146,16 @@ namespace dae
 				{
 					origin += (forwardVec * 3) * deltaTime;
 				}
+
+				if (mouseX > 0)
+				{
+					totalYaw += rotSpeed * deltaTime;
+				}
+
+				if (mouseX < 0)
+				{
+					totalYaw -= rotSpeed * deltaTime;
+				}
 				
 			}
 
@@ -177,7 +186,12 @@ namespace dae
 
 			if (pKeyboardState[SDL_SCANCODE_LSHIFT])
 			{
-				origin -= upVector * deltaTime;
+				movSpeed = 200;
+			}
+
+			else
+			{
+				movSpeed = 100;
 			}
 
 			Matrix totalRotation = Matrix::CreateRotation(Vector3(-totalPitch, totalYaw, 0));

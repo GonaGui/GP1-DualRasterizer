@@ -7,6 +7,14 @@
 #undef main
 #include "Renderer.h"
 
+#define ESC "\033["
+#define YELLOW_TXT "33"
+#define GREEN_TXT "32"
+#define PURPLE_TXT "35"
+#define RESET "\033[m"
+
+
+
 using namespace dae;
 
 void ShutDown(SDL_Window* pWindow)
@@ -42,6 +50,25 @@ int main(int argc, char* args[])
 	const auto pTimer = new Timer();
 	const auto pRenderer = new Renderer(pWindow);
 
+	//CONSOLE MESSAGES
+
+	std::cout << ESC << YELLOW_TXT << "m" << "[Key Bindings - SHARED]" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F1]  Toggle Rasterizer Mode(HARDWARE / SOFTWARE)	" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	" << "[F3] Toggle FireFX(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F2]  Toggle Vehicle Rotation(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F9]  Cycle CullMode(BACK / FRONT / NONE)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F10] Toggle Uniform ClearColor(ON / OFF)	" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F11] Toggle Print FPS(ON / OFF)" << RESET << "\n";
+
+	std::cout << ESC << GREEN_TXT << "m" << "[Key Bindings - HARDWARE]" << RESET << "\n";
+	std::cout << ESC << GREEN_TXT << "m" << "	"<< "[F4] Cycle Sampler State(POINT / LINEAR / ANISOTROPIC)" << RESET << "\n";
+
+	std::cout << ESC << PURPLE_TXT << "m" << "[Key Bindings - SOFTWARE]" << RESET << "\n";
+	std::cout << ESC << PURPLE_TXT << "m" << "	[F5] Cycle Shading Mode(COMBINED / OBSERVED_AREA / DIFFUSE / SPECULAR)"<< RESET << "\n";
+	std::cout << ESC << PURPLE_TXT << "m" << "	[F6] Toggle NormalMap(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << PURPLE_TXT << "m" << "	[F7] Toggle DepthBuffer Visualization(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << PURPLE_TXT << "m" << "	[F8] Toggle BoundingBox Visualization(ON / OFF)" << RESET << "\n \n \n";
+
 	//Start loop
 	pTimer->Start();
 	float printTimer = 0.f;
@@ -60,7 +87,11 @@ int main(int argc, char* args[])
 			case SDL_KEYUP:
 				//Test for a key
 				if (e.key.keysym.scancode == SDL_SCANCODE_F11)
+				{
 					m_PrintFPS = !m_PrintFPS;
+					std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Printing FPS..." << RESET << "\n \n";
+				}
+					
 
 				pRenderer->ToggleOptions(e.key.keysym.scancode);
 				break;
@@ -83,6 +114,7 @@ int main(int argc, char* args[])
 			{
 				printTimer = 0.f;
 				std::cout << "dFPS: " << pTimer->GetdFPS() << std::endl;
+
 			}
 			
 		}

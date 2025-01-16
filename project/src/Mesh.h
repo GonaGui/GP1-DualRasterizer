@@ -71,6 +71,7 @@ public:
 	std::vector<uint32_t>& GetIndices();
 	void ToggleCullMode();
 	CullModes GetCurrentCullMode() const;
+	std::string GetCurrentTechnique() const;
 	bool GetUsesTransparency() const;
 
 private:

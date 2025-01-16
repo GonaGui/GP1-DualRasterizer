@@ -7,6 +7,11 @@
 #include "Material.h"
 #include "Utils.h"
 
+#define ESC "\033["
+#define YELLOW_TXT "33"
+#define GREEN_TXT "32"
+#define PURPLE_TXT "35"
+#define RESET "\033[m"
 
 
 namespace dae {
@@ -86,6 +91,8 @@ namespace dae {
 		if (m_pDepthStencilView) m_pDepthStencilView->Release();
 		if (m_pRenderTargetBuffer) m_pRenderTargetBuffer->Release();
 		if (m_pRenderTargetView) m_pRenderTargetView->Release();
+
+		delete[] m_pDepthBufferPixels;
 
 		for (const auto mesh : m_pMeshes)
 		{
@@ -518,33 +525,77 @@ namespace dae {
 	void Renderer::ToggleOptions(const SDL_Scancode keyScancode)
 	{
 		if (keyScancode == SDL_SCANCODE_F1)
+		{
 			m_IsSoftwareRasterizer = !m_IsSoftwareRasterizer;
 
+			std::string hardwareOrSoftware {};
+			if (m_IsSoftwareRasterizer) hardwareOrSoftware = "SOFTWARE";
+
+			else hardwareOrSoftware = "HARDWARE";
+			
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Rasterizer mode is " << hardwareOrSoftware << RESET << "\n\n";
+		}
+			
+
 		if (keyScancode == SDL_SCANCODE_F2)
+		{
 			m_IsRotating = !m_IsRotating;
 
-		if (keyScancode == SDL_SCANCODE_F3) 
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Mesh rotation is" << OnOrOff(m_IsRotating) << RESET << "\n\n";
+		}
+			
+
+		if (keyScancode == SDL_SCANCODE_F3)
+		{
 			m_RenderFireMesh = !m_RenderFireMesh;
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Fire effect is" << OnOrOff(m_RenderFireMesh) << RESET << "\n\n";
+		}
+			
 
 		if (keyScancode == SDL_SCANCODE_F4)
 		{
+			if (m_IsSoftwareRasterizer)	return;
+
 			for (const auto mesh : m_pMeshes)
 			{
 				mesh->ToggleTechnique();
 			}
+
+
+			std::cout << ESC << GREEN_TXT << "m" << "(HARDWARE) " <<"Current Technique is " << m_pMeshes[0]->GetCurrentTechnique() << RESET << "\n\n";
 		}
 
 		if (keyScancode == SDL_SCANCODE_F5)
+		{
+			if (!m_IsSoftwareRasterizer) return;
+
 			m_CurrentRenderMode = static_cast<RenderModes>((m_CurrentRenderMode + 1) % static_cast<int>(RenderModesEnd));
 
+			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Current Render is " << m_CurrentRenderMode << RESET << "\n\n";
+		}
 		if (keyScancode == SDL_SCANCODE_F6)
+		{
+			if (!m_IsSoftwareRasterizer) return;
 			m_IsNormalMapOn = !m_IsNormalMapOn;
+			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Normal map is" << OnOrOff(m_IsNormalMapOn) << RESET << "\n\n";
+		}
+			
 
 		if (keyScancode == SDL_SCANCODE_F7)
+		{
+			if (!m_IsSoftwareRasterizer) return;
 			m_IsRenderingDepthBuffer = !m_IsRenderingDepthBuffer;
+			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Rendering Depth Buffer map is" << OnOrOff(m_IsRenderingDepthBuffer) << RESET << "\n\n";
+		}
+			
 
 		if (keyScancode == SDL_SCANCODE_F8)
+		{
+			if (!m_IsSoftwareRasterizer) return;
 			m_IsBoundingBoxVisualisation = !m_IsBoundingBoxVisualisation;
+			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Bounding Box Visualisation is" << OnOrOff(m_IsBoundingBoxVisualisation) << RESET << "\n\n";
+		}
+			
 
 		if (keyScancode == SDL_SCANCODE_F9)
 		{
@@ -552,10 +603,24 @@ namespace dae {
 			{
 				mesh->ToggleCullMode();
 			}
+
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Current CullMode is " << m_pMeshes[0]->GetCurrentCullMode() << RESET << "\n\n";
 		}
 
 		if (keyScancode == SDL_SCANCODE_F10)
+		{
 			m_UniformColor = !m_UniformColor;
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Uniform Color is" << OnOrOff(m_UniformColor) << RESET << "\n\n";
+		}
+			
+	}
+
+	std::string Renderer::OnOrOff(bool trueOrFalse)
+	{
+		if (trueOrFalse) return std::string(" ON ");
+
+		return std::string(" OFF ");
+		
 	}
 
 

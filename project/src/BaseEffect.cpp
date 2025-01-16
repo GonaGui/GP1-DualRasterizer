@@ -123,6 +123,11 @@ ID3DX11EffectTechnique* BaseEffect::GetTechnique() const
 	return m_pTechnique;
 }
 
+std::string BaseEffect::GetCurrentTechnique() const
+{
+	return m_Techniques[m_CurrentTechnique];
+}
+
 void BaseEffect::UpdateData(const float* worldProjViewMatrix,const float* worldMatrix,const float* cameraPos) const
 {
 	m_pMatWorldViewProjVariable->SetMatrix(worldProjViewMatrix);
