@@ -6,6 +6,8 @@
 #include "SDL_surface.h"
 
 
+class Mesh;
+
 namespace dae
 {
 	struct Vector2;
@@ -19,6 +21,7 @@ public:
 	void LoadFromFile(ID3D11Device* pDevice, const std::string& path);
 	ID3D11ShaderResourceView* GetSRV();
 	dae::ColorRGBA Sample(const dae::Vector2& uv) const;
+	dae::ColorRGBA Sample(const dae::Vector2& uv, const Mesh* currentMesh) const;
 private:
 	Texture(SDL_Surface* pSurface);
 

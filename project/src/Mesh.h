@@ -59,18 +59,19 @@ public:
 
 	void Render(ID3D11DeviceContext* pDeviceContext, dae::Matrix& worldMatrix, dae::Matrix& worldProjViewMatrix, const float* cameraPos) const;
 	void ToggleTechnique() const;
-	PrimitiveTopology GetPrimitiveTopology();
-	void SetPrimitiveTopology(PrimitiveTopology primitiveTopologyType);
+	PrimitiveTopology GetPrimitiveTopology() const;
+	void SetPrimitiveTopology(const PrimitiveTopology& primitiveTopologyType);
 	void UpdateWorldMatrixRotY(float yaw, float deltaSeconds);
 	dae::Matrix GetWorldMatrix();
-	void SetWorldMatrix(dae::Matrix newMatrix);
-	MatCompFormat& GetMaterialComponentByName(std::string directXVarName) const;
-	bool HasMaterialByComponentName(std::string directXVarName) const;
+	void SetWorldMatrix(const dae::Matrix& newMatrix);
+	MatCompFormat& GetMaterialComponentByName(const std::string& directXVarName) const;
+	bool HasMaterialByComponentName(const std::string& directXVarName) const;
 	std::vector<VertexOut>& GetOutVertices();
 	std::vector<Vertex>& GetVertices();
 	std::vector<uint32_t>& GetIndices();
 	void ToggleCullMode();
 	CullModes GetCurrentCullMode() const;
+	std::string GetCurrentCullModeName() const;
 	std::string GetCurrentTechnique() const;
 	bool GetUsesTransparency() const;
 

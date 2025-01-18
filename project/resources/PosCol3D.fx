@@ -126,7 +126,7 @@ float4 PS_Point(VS_OUTPUT input) : SV_TARGET
 
 float4 PS_Linear(VS_OUTPUT input) : SV_TARGET
 {
-    float3 ambient = float3(0.03f, 0.03f, 0.03f);
+    float3 ambient = float3(0.025f, 0.025f, 0.025f);
     float3 viewDirection = normalize(gCameraPosition - input.WorldPosition.xyz);
 
     // Sample Maps
@@ -150,6 +150,7 @@ float4 PS_Linear(VS_OUTPUT input) : SV_TARGET
 
     // Lighting Calculations
     float observedArea = max(dot(normalMapColor, -gLightDirection), 0.0f);
+    (dot(normalMapColor, -gLightDirection), 0.0f);
     float3 lightReflect = reflect(gLightDirection, normalMapColor);
     glossMapColor = gShininess * glossMapColor;
     float cosa = max(dot(lightReflect, viewDirection), 0.0f);
@@ -166,7 +167,7 @@ float4 PS_Linear(VS_OUTPUT input) : SV_TARGET
 
 float4 PS_Anisotropic(VS_OUTPUT input) : SV_TARGET
 {
-    float3 ambient = float3(0.03f, 0.03f, 0.03f);
+    float3 ambient = float3(0.025f, 0.025f, 0.025f);
     float3 viewDirection = normalize(gCameraPosition - input.WorldPosition.xyz);
 
     // Sample Maps

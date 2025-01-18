@@ -150,9 +150,6 @@ namespace dae {
 				auto&  indices = currentMesh->GetIndices();
 				VertexTransformationFunction(currentMesh->GetVertices(),
 					verticesOut, *currentMesh);
-				Vector3 a{};
-				Vector3 b{};
-				Vector3 c{};
 
 				int nrOfTriangles;
 
@@ -199,6 +196,12 @@ namespace dae {
 					ConvertToRasterSpace(triangle);
 					CalculateBoundingBox(minX, minY, maxX, maxY, triangle);
 
+					Vector3 a {triangle[0], triangle[1]};
+					Vector3 b {triangle[1], triangle[2]};
+					Vector3 c {triangle[2], triangle[0]};
+
+					const Vector3 n{ Vector3::Cross(a,b).Normalized() };
+
 					for (int py{ minY }, px; py < maxY; ++py) 
 					for (px = minX; px < maxX; ++px)
 					{
@@ -226,9 +229,15 @@ namespace dae {
 						}
 
 						// Check if point is in the triangle
-						if (!TriangleHitTest(idx, P, a, b, c, triangle)) continue;
+						if (!TriangleHitTest(n, P, a, b, c, triangle)) continue;
 
 						float triangleArea = Vector2::Cross(a.GetXY(), b.GetXY());
+
+						if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
+							continue;
+
+						if (triangleArea > 0 && currentMesh->GetCurrentCullMode() == FrontFaceCull)
+							continue;
 
 						std::array<float, 3> weights{
 							Vector2::Cross(Vector2(P, triangle[1].GetXY()), b.GetXY()),
@@ -240,14 +249,8 @@ namespace dae {
 						weights[1] /= triangleArea;
 						weights[2] /= triangleArea;
 
-						const auto& weightsAccumulated = weights[0] + weights[1] + weights[2];
-						if (abs(weightsAccumulated) > 1.01 || abs(weightsAccumulated) < 0) continue;
+						if( !(weights[0] > 0 && weights[1] > 0 && weights[2] > 0) || (weights[0] < 0 && weights[1] < 0 && weights[2] < 0)) continue;
 
-						if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
-							continue;
-
-						if (triangleArea > 0 && currentMesh->GetCurrentCullMode() == FrontFaceCull)
-							continue;
 
 						float ZInterpolated = 1.f / (weights[0] / triangle[0].z +
 							weights[1] / triangle[1].z +
@@ -280,7 +283,7 @@ namespace dae {
 							finalColor = PixelShading(interpolatedValues, currentMesh);
 
 						uint8_t r, g, b;
-						SDL_GetRGB(m_pBackBufferPixels[px + (py * m_Width)], m_pBackBuffer->format, &r, &g, &b);
+						SDL_GetRGB(m_pBackBufferPixels[depthBufferIndex], m_pBackBuffer->format, &r, &g, &b);
 
 						finalColor *= finalColor.a;
 
@@ -288,7 +291,7 @@ namespace dae {
 
 						// Update Color in Buffer
 						finalColor.MaxToOne();
-						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+						m_pBackBufferPixels[depthBufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
 							static_cast<uint8_t>(finalColor.r * 255),
 							static_cast<uint8_t>(finalColor.g * 255),
 							static_cast<uint8_t>(finalColor.b * 255));
@@ -554,8 +557,6 @@ namespace dae {
 
 		if (keyScancode == SDL_SCANCODE_F4)
 		{
-			if (m_IsSoftwareRasterizer)	return;
-
 			for (const auto mesh : m_pMeshes)
 			{
 				mesh->ToggleTechnique();
@@ -571,7 +572,7 @@ namespace dae {
 
 			m_CurrentRenderMode = static_cast<RenderModes>((m_CurrentRenderMode + 1) % static_cast<int>(RenderModesEnd));
 
-			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Current Render is " << m_CurrentRenderMode << RESET << "\n\n";
+			std::cout << ESC << PURPLE_TXT << "m" << "(SOFTWARE) " << "Current Render is " << GetCurrentRenderModeName() << RESET << "\n\n";
 		}
 		if (keyScancode == SDL_SCANCODE_F6)
 		{
@@ -604,7 +605,7 @@ namespace dae {
 				mesh->ToggleCullMode();
 			}
 
-			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Current CullMode is " << m_pMeshes[0]->GetCurrentCullMode() << RESET << "\n\n";
+			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Current CullMode is " << m_pMeshes[0]->GetCurrentCullModeName() << RESET << "\n\n";
 		}
 
 		if (keyScancode == SDL_SCANCODE_F10)
@@ -613,6 +614,28 @@ namespace dae {
 			std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Uniform Color is" << OnOrOff(m_UniformColor) << RESET << "\n\n";
 		}
 			
+	}
+
+	std::string Renderer::GetCurrentRenderModeName() const
+	{
+		switch (m_CurrentRenderMode)
+		{
+		case ObservedArea:
+			return "Observed Area Render Mode";
+			break;
+		case Diffuse:
+			return "Diffuse Render Mode";
+			break;
+		case Specular:
+			return "Specular Render Mode";
+			break;
+		case Combined:
+			return "Combined Render Mode";
+			break;
+		default: 
+			return "Error no render mode";
+		}
+
 	}
 
 	std::string Renderer::OnOrOff(bool trueOrFalse)
@@ -629,15 +652,8 @@ namespace dae {
 		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
 	}
 
-	bool Renderer::TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle)
+	bool Renderer::TriangleHitTest(Vector3 n, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle)
 	{
-
-		a = Vector3(triangle[0], triangle[1]);
-		b = Vector3(triangle[1], triangle[2]);
-		c = Vector3(triangle[2], triangle[0]);
-
-		const Vector3 n{ Vector3::Cross(a,b).Normalized() };
-
 		//loops through the 3 vertices of the current triangle
 		for (int idx{}; idx < 3; idx++)
 		{
@@ -744,16 +760,17 @@ namespace dae {
 		const Vector3 lightDirection = { .577f,-.577f,.577f };
 
 		constexpr float kd = 7.f;
-		const ColorRGBA cd = currentMesh->GetMaterialComponentByName("gDiffuseMap").pMatCompTexture->Sample(v.UV);
+
+		const ColorRGBA cd = currentMesh->GetMaterialComponentByName(m_DiffuseMapString).pMatCompTexture->Sample(v.UV,currentMesh);
 
 		// Grabs the Normal colors of the Normal map and then converts it to a usable format
 		Vector3 normalMap { v.Normal};
 
 		if (m_IsNormalMapOn)
 		{
-			if (currentMesh->HasMaterialByComponentName("gNormalMap"))
+			if (currentMesh->HasMaterialByComponentName(m_NormalMapString))
 			{
-				ColorRGBA normalMapColor = currentMesh->GetMaterialComponentByName("gNormalMap").pMatCompTexture->Sample(v.UV);
+				ColorRGBA normalMapColor = currentMesh->GetMaterialComponentByName(m_NormalMapString).pMatCompTexture->Sample(v.UV, currentMesh);
 				const auto tangent = v.Tangent.Normalized();
 				const auto normal = v.Normal.Normalized();
 				const Vector3 binormal = Vector3::Cross(normal, tangent);
@@ -769,13 +786,13 @@ namespace dae {
 		ColorRGBA phongSpecReflect{};
 
 
-		if (currentMesh->HasMaterialByComponentName("gSpecularMap") && 
-			currentMesh->HasMaterialByComponentName("gGlossinessMap"))
+		if (currentMesh->HasMaterialByComponentName(m_SpecularMapString) && 
+			currentMesh->HasMaterialByComponentName(m_GlossinessMapString))
 		{
-			const ColorRGBA specularMapColor = currentMesh->GetMaterialComponentByName("gSpecularMap").pMatCompTexture->Sample(v.UV);
+			const ColorRGBA specularMapColor = currentMesh->GetMaterialComponentByName(m_SpecularMapString).pMatCompTexture->Sample(v.UV, currentMesh);
 			constexpr float shininess = 25.f;
 
-			const ColorRGBA glossMapColor = currentMesh->GetMaterialComponentByName("gGlossinessMap").pMatCompTexture->Sample(v.UV);
+			const ColorRGBA glossMapColor = currentMesh->GetMaterialComponentByName(m_GlossinessMapString).pMatCompTexture->Sample(v.UV,currentMesh);
 
 
 			const Vector3 reflect = Vector3::Reflect(-lightDirection, normalMap);

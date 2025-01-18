@@ -194,6 +194,8 @@ namespace dae
 				movSpeed = 100;
 			}
 
+			totalYaw = std::clamp(totalYaw, -90.f, 90.f);
+
 			Matrix totalRotation = Matrix::CreateRotation(Vector3(-totalPitch, totalYaw, 0));
 			forward = totalRotation.TransformVector(Vector3::UnitZ);
 			Camera::forward.Normalize();

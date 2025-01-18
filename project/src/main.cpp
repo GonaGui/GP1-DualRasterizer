@@ -11,6 +11,7 @@
 #define YELLOW_TXT "33"
 #define GREEN_TXT "32"
 #define PURPLE_TXT "35"
+#define CYAN_TXT "36"
 #define RESET "\033[m"
 
 
@@ -53,21 +54,26 @@ int main(int argc, char* args[])
 	//CONSOLE MESSAGES
 
 	std::cout << ESC << YELLOW_TXT << "m" << "[Key Bindings - SHARED]" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F1]  Toggle Rasterizer Mode(HARDWARE / SOFTWARE)	" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "	" << "[F3] Toggle FireFX(ON / OFF)" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F2]  Toggle Vehicle Rotation(ON / OFF)" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F9]  Cycle CullMode(BACK / FRONT / NONE)" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F10] Toggle Uniform ClearColor(ON / OFF)	" << RESET << "\n";
-	std::cout << ESC << YELLOW_TXT << "m" << "  "<< "[F11] Toggle Print FPS(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F1]  Toggle Rasterizer Mode(HARDWARE / SOFTWARE)	" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F3] Toggle FireFX(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F2]  Toggle Vehicle Rotation(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F9]  Cycle CullMode(BACK / FRONT / NONE)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F10] Toggle Uniform ClearColor(ON / OFF)	" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F11] Toggle Print FPS(ON / OFF)" << RESET << "\n";
+	std::cout << ESC << YELLOW_TXT << "m" << "	[F4] Exclusive (Point/Linear)" << RESET << "\n";
 
 	std::cout << ESC << GREEN_TXT << "m" << "[Key Bindings - HARDWARE]" << RESET << "\n";
-	std::cout << ESC << GREEN_TXT << "m" << "	"<< "[F4] Cycle Sampler State(POINT / LINEAR / ANISOTROPIC)" << RESET << "\n";
+	std::cout << ESC << GREEN_TXT << "m" << "	[F4] Exclusive (ANISOTROPIC)" << RESET << "\n";
 
 	std::cout << ESC << PURPLE_TXT << "m" << "[Key Bindings - SOFTWARE]" << RESET << "\n";
 	std::cout << ESC << PURPLE_TXT << "m" << "	[F5] Cycle Shading Mode(COMBINED / OBSERVED_AREA / DIFFUSE / SPECULAR)"<< RESET << "\n";
 	std::cout << ESC << PURPLE_TXT << "m" << "	[F6] Toggle NormalMap(ON / OFF)" << RESET << "\n";
 	std::cout << ESC << PURPLE_TXT << "m" << "	[F7] Toggle DepthBuffer Visualization(ON / OFF)" << RESET << "\n";
-	std::cout << ESC << PURPLE_TXT << "m" << "	[F8] Toggle BoundingBox Visualization(ON / OFF)" << RESET << "\n \n \n";
+	std::cout << ESC << PURPLE_TXT << "m" << "	[F8] Toggle BoundingBox Visualization(ON / OFF)" << RESET << "\n \n";
+
+	std::cout << ESC << CYAN_TXT << "m" << "Extra Features: " << RESET << "\n";
+	std::cout << ESC << CYAN_TXT << "m" << "	 Software transparency " << RESET << "\n";
+	std::cout << ESC << CYAN_TXT << "m" << "	 Added Linear sampling (no anisotropic filtering) :(" << RESET << "\n \n \n";
 
 	//Start loop
 	pTimer->Start();
@@ -89,7 +95,10 @@ int main(int argc, char* args[])
 				if (e.key.keysym.scancode == SDL_SCANCODE_F11)
 				{
 					m_PrintFPS = !m_PrintFPS;
-					std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Printing FPS..." << RESET << "\n \n";
+
+					if (m_PrintFPS) std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "Printing FPS..." << RESET << "\n \n";
+
+					else std::cout << ESC << YELLOW_TXT << "m" << "(SHARED) " << "...Stopping FPS print" << RESET << "\n \n";
 				}
 					
 

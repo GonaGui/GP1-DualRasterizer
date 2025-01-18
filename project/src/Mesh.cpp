@@ -229,17 +229,17 @@ void Mesh::ToggleTechnique() const
 	m_pEffect->ToggleTechnique();
 }
 
-PrimitiveTopology Mesh::GetPrimitiveTopology()
+PrimitiveTopology Mesh::GetPrimitiveTopology() const
 {
 	return m_PrimitiveTopology;
 }
 
-void Mesh::SetPrimitiveTopology(const PrimitiveTopology primitiveTopologyType)
+void Mesh::SetPrimitiveTopology(const PrimitiveTopology& primitiveTopologyType)
 {
 	m_PrimitiveTopology = primitiveTopologyType;
 }
 
-void Mesh::UpdateWorldMatrixRotY(float yaw, float deltaSeconds)
+void Mesh::UpdateWorldMatrixRotY(const float yaw, const float deltaSeconds)
 {
 	float newyaw = yaw * deltaSeconds;
 	m_WorldMatrix = m_WorldMatrix.CreateRotationY(newyaw) * m_WorldMatrix;
@@ -250,17 +250,17 @@ dae::Matrix Mesh::GetWorldMatrix()
 	return m_WorldMatrix;
 }
 
-void Mesh::SetWorldMatrix(dae::Matrix newMatrix)
+void Mesh::SetWorldMatrix(const dae::Matrix& newMatrix)
 {
 	m_WorldMatrix = newMatrix;
 }
 
-MatCompFormat& Mesh::GetMaterialComponentByName(std::string directXVarName) const
+MatCompFormat& Mesh::GetMaterialComponentByName(const std::string& directXVarName) const
 {
 	return m_pEffect->GetMaterial().GetMaterialComponentByName(directXVarName);
 }
 
-bool Mesh::HasMaterialByComponentName(std::string directXVarName) const
+bool Mesh::HasMaterialByComponentName(const std::string& directXVarName) const
 {
 	return m_pEffect->GetMaterial().DoesMaterialComponentExistByName(directXVarName);
 }
@@ -288,6 +288,23 @@ void Mesh::ToggleCullMode()
 CullModes Mesh::GetCurrentCullMode() const
 {
 	return m_CurrentCullMode;
+}
+
+std::string Mesh::GetCurrentCullModeName() const
+{
+	switch (m_CurrentCullMode)
+	{
+	case FrontFaceCull:
+		return "Front Face Culling";
+		break;
+	case BackFaceCull:
+		return "Back Face Culling";
+		break;
+	case NoCull:
+		return "No Culling";
+	default:
+		return "Error No Culling Mode";
+	}
 }
 
 std::string Mesh::GetCurrentTechnique() const

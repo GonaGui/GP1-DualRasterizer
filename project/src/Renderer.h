@@ -28,7 +28,7 @@ namespace dae
 		void Render() const;
 
 		bool SaveBufferToImage() const;
-		static bool TriangleHitTest(uint32_t idx, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle);
+		static bool TriangleHitTest(Vector3 n, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle);
 		void CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, const std::array<Vector4, 3>& triangle) const;
 		static bool IsInFrustum(std::array<Vector4, 3>& triangle);
 		static void InterpolateValues(VertexOut& interpolatedValues, const std::array<Vector4, 3>& triangle, Mesh& currentMesh, float wInterpolated, int idx, std::array<float, 3> weights);
@@ -37,6 +37,7 @@ namespace dae
 		void VertexTransformationFunction(const std::vector<Vertex>& verticesIn, std::vector<VertexOut>& verticesOut, Mesh& currentMesh) const;
 		void ConvertToRasterSpace(std::array<Vector4, 3>& vertices) const;
 		void ToggleOptions(SDL_Scancode keyScancode);
+		std::string GetCurrentRenderModeName() const;
 		static std::string OnOrOff(bool trueOrFalse);
 
 	private:
@@ -72,6 +73,11 @@ namespace dae
 		std::vector<int> m_ClosestTriangle{};
 
 		bool m_IsInitialized{ false };
+
+		const std::string m_DiffuseMapString{ "gDiffuseMap" };
+		const std::string m_SpecularMapString{ "gSpecularMap" };
+		const std::string m_NormalMapString{ "gNormalMap" };
+		const std::string m_GlossinessMapString{ "gGlossinessMap" };
 
 		ID3D11Device* m_pDevice{nullptr};
 		ID3D11DeviceContext* m_pDeviceContext{ nullptr };
