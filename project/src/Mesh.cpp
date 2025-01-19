@@ -255,12 +255,12 @@ void Mesh::SetWorldMatrix(const dae::Matrix& newMatrix)
 	m_WorldMatrix = newMatrix;
 }
 
-MatCompFormat& Mesh::GetMaterialComponentByName(const std::string& directXVarName) const
+MatCompFormat& Mesh::GetMaterialComponentByName(const char* directXVarName) const
 {
 	return m_pEffect->GetMaterial().GetMaterialComponentByName(directXVarName);
 }
 
-bool Mesh::HasMaterialByComponentName(const std::string& directXVarName) const
+bool Mesh::HasMaterialByComponentName(const char* directXVarName) const
 {
 	return m_pEffect->GetMaterial().DoesMaterialComponentExistByName(directXVarName);
 }
@@ -285,12 +285,12 @@ void Mesh::ToggleCullMode()
 	if (!m_UsesTransparency) m_CurrentCullMode = static_cast<CullModes>((m_CurrentCullMode + 1) % static_cast<int>(CullModesEnd));
 }
 
-CullModes Mesh::GetCurrentCullMode() const
+CullModes& Mesh::GetCurrentCullMode() 
 {
 	return m_CurrentCullMode;
 }
 
-std::string Mesh::GetCurrentCullModeName() const
+const char* Mesh::GetCurrentCullModeName() const
 {
 	switch (m_CurrentCullMode)
 	{
@@ -307,7 +307,7 @@ std::string Mesh::GetCurrentCullModeName() const
 	}
 }
 
-std::string Mesh::GetCurrentTechnique() const
+const char* Mesh::GetCurrentTechnique() const
 {
 	return m_pEffect->GetCurrentTechnique();
 }

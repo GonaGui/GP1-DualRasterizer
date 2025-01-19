@@ -20,7 +20,7 @@ public:
 	static  ID3DX11Effect* LoadEffect(ID3D11Device* pDevice, const std::wstring& assetFile);
 	ID3DX11Effect* GetEffect() const;
 	ID3DX11EffectTechnique* GetTechnique() const;
-	std::string GetCurrentTechnique() const;
+	const char* GetCurrentTechnique() const;
 
 	virtual void UpdateData(const float* worldProjViewMatrix, const float* worldMatrix, const float* cameraPos) const;
 	void ToggleTechnique();

@@ -123,7 +123,7 @@ ID3DX11EffectTechnique* BaseEffect::GetTechnique() const
 	return m_pTechnique;
 }
 
-std::string BaseEffect::GetCurrentTechnique() const
+const char* BaseEffect::GetCurrentTechnique() const
 {
 	return m_Techniques[m_CurrentTechnique];
 }

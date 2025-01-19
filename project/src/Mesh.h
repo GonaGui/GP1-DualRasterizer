@@ -64,15 +64,15 @@ public:
 	void UpdateWorldMatrixRotY(float yaw, float deltaSeconds);
 	dae::Matrix GetWorldMatrix();
 	void SetWorldMatrix(const dae::Matrix& newMatrix);
-	MatCompFormat& GetMaterialComponentByName(const std::string& directXVarName) const;
-	bool HasMaterialByComponentName(const std::string& directXVarName) const;
+	MatCompFormat& GetMaterialComponentByName(const char* directXVarName) const;
+	bool HasMaterialByComponentName(const char* directXVarName) const;
 	std::vector<VertexOut>& GetOutVertices();
 	std::vector<Vertex>& GetVertices();
 	std::vector<uint32_t>& GetIndices();
 	void ToggleCullMode();
-	CullModes GetCurrentCullMode() const;
-	std::string GetCurrentCullModeName() const;
-	std::string GetCurrentTechnique() const;
+	CullModes& GetCurrentCullMode();
+	const char* GetCurrentCullModeName() const;
+	const char* GetCurrentTechnique() const;
 	bool GetUsesTransparency() const;
 
 private:
@@ -85,7 +85,7 @@ private:
 	std::vector<uint32_t>	m_Indices{};
 	BaseEffect*				m_pEffect { nullptr };
 	PrimitiveTopology       m_PrimitiveTopology{ TriangleList };
-	CullModes               m_CurrentCullMode{NoCull};
+	CullModes               m_CurrentCullMode{BackFaceCull};
 
 	bool					m_UsesTransparency{false};
 

@@ -32,8 +32,8 @@ class Material
 public:
 	Material(const std::initializer_list<MatCompFormat>& materialInfo, ID3D11Device* directXDevice);
 	~Material();
-	MatCompFormat& GetMaterialComponentByName(const std::string& directXVarName);
-	bool DoesMaterialComponentExistByName(const std::string& directXVarName);
+	MatCompFormat& GetMaterialComponentByName(const char* directXVarName);
+	bool DoesMaterialComponentExistByName(const char* directXVarName) const;
 	std::vector<MatCompFormat> GetMaterialComponents();
 
 	

@@ -22,11 +22,11 @@ Material::~Material()
 	}
 }
 
-MatCompFormat& Material::GetMaterialComponentByName(const std::string& directXVarName) 
+MatCompFormat& Material::GetMaterialComponentByName(const char* directXVarName)
 {
 	for (auto& matInfo : m_MaterialComponents)
 	{
-		if (matInfo.pMatCompDirectXVarName == directXVarName)
+		if (strcmp(matInfo.pMatCompDirectXVarName,directXVarName) == 0)
 		{
 			return matInfo;
 		}
@@ -35,11 +35,11 @@ MatCompFormat& Material::GetMaterialComponentByName(const std::string& directXVa
 	return null;
 }
 
-bool Material::DoesMaterialComponentExistByName(const std::string& directXVarName)
+bool Material::DoesMaterialComponentExistByName(const char* directXVarName) const
 {
 	for (auto& matInfo : m_MaterialComponents)
 	{
-		if (matInfo.pMatCompDirectXVarName == directXVarName)
+		if (strcmp(matInfo.pMatCompDirectXVarName,directXVarName) == 0)
 		{
 			return true;
 		}

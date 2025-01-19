@@ -228,9 +228,6 @@ namespace dae {
 							continue;
 						}
 
-						// Check if point is in the triangle
-						if (!TriangleHitTest(n, P, a, b, c, triangle)) continue;
-
 						float triangleArea = Vector2::Cross(a.GetXY(), b.GetXY());
 
 						if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
@@ -262,8 +259,6 @@ namespace dae {
 
 						if (ZInterpolated >= m_pDepthBufferPixels[depthBufferIndex] || ZInterpolated <= 0 || ZInterpolated >= 1)
 							continue;
-						
-
 
 						VertexOut interpolatedValues;
 						InterpolateValues(interpolatedValues, triangle, *currentMesh, WInterpolated, idx, weights);
@@ -524,7 +519,6 @@ namespace dae {
 		}
 	}
 
-
 	void Renderer::ToggleOptions(const SDL_Scancode keyScancode)
 	{
 		if (keyScancode == SDL_SCANCODE_F1)
@@ -646,35 +640,9 @@ namespace dae {
 		
 	}
 
-
 	bool Renderer::SaveBufferToImage() const
 	{
 		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
-	}
-
-	bool Renderer::TriangleHitTest(Vector3 n, Vector2 P, Vector3& a, Vector3& b, Vector3& c, const std::array<Vector4, 3>& triangle)
-	{
-		//loops through the 3 vertices of the current triangle
-		for (int idx{}; idx < 3; idx++)
-		{
-			Vector3 e;
-			if (idx == 0)
-				e = a;
-			else if (idx == 1)
-				e = b;
-			else
-				e = c;
-
-			Vector3 p{ triangle[idx], Vector3(P.x,P.y,triangle[idx].z) };
-
-			if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
-			{
-				return false;
-			}
-
-		}
-
-		return true;
 	}
 
 	void Renderer::CalculateBoundingBox(int& minX, int& minY, int& maxX, int& maxY, const std::array<Vector4, 3>& triangle) const
