@@ -229,13 +229,16 @@ namespace dae {
 						}
 
 						float triangleArea = Vector2::Cross(a.GetXY(), b.GetXY());
+						if (!currentMesh->GetUsesTransparency())
+						{
+							if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
+								continue;
 
-						if (triangleArea < 0 && currentMesh->GetCurrentCullMode() == BackFaceCull)
-							continue;
+							if (triangleArea > 0 && currentMesh->GetCurrentCullMode() == FrontFaceCull)
+								continue;
 
-						if (triangleArea > 0 && currentMesh->GetCurrentCullMode() == FrontFaceCull)
-							continue;
-
+						}
+						
 						std::array<float, 3> weights{
 							Vector2::Cross(Vector2(P, triangle[1].GetXY()), b.GetXY()),
 							Vector2::Cross(Vector2(P, triangle[2].GetXY()), c.GetXY()),
